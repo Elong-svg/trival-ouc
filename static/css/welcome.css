@@ -1,0 +1,142 @@
+.welcome-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--space-16) var(--space-6) 220px;
+  animation: fadeIn var(--duration-normal) var(--ease-default);
+  overflow-y: auto;
+}
+
+.welcome-content {
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+}
+
+.welcome-logo {
+  width: 250px;
+  height: 250px;
+  margin: 0 auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.welcome-title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin-top: -60px;
+  margin-bottom: var(--space-3);
+  letter-spacing: -0.02em;
+}
+
+.welcome-title span {
+  background: var(--gradient-blue);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-subtitle {
+  font-size: var(--text-base);
+  color: var(--gray-500);
+  margin-bottom: var(--space-10);
+  line-height: 1.6;
+}
+
+.quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-bottom: var(--space-8);
+}
+
+.quick-prompt-card {
+  padding: var(--space-3) var(--space-5);
+  background: var(--gray-100);
+  border: var(--border-light);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-fast);
+  font-size: var(--text-sm);
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+
+.quick-prompt-card:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-200);
+  color: var(--blue-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.quick-prompt-card:active {
+  transform: translateY(0);
+}
+
+.welcome-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.feature-card {
+  padding: var(--space-5);
+  background: var(--gray-0);
+  border: var(--border-light);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  transition: all var(--duration-fast) var(--ease-fast);
+}
+
+.feature-card:hover {
+  border-color: var(--blue-200);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.feature-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--blue-50);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+}
+
+.feature-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--blue-600);
+}
+
+.feature-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--gray-900);
+  margin-bottom: var(--space-1);
+}
+
+.feature-desc {
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+  line-height: 1.5;
+}

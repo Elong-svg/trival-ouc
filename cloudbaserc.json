@@ -1,0 +1,14 @@
+{
+  "envId": "trival-ouc",
+  "region": "ap-shanghai",
+  "functionRoot": "./",
+  "functions": [
+    {
+      "name": "web",
+      "timeout": 60,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256,
+      "handler": "index.main"
+    }
+  ]
+}
