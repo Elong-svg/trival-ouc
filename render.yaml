@@ -3,9 +3,9 @@ services:
     name: trival-ouc
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn server:app
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.10.0
       - key: ALIYUN_API_KEY
         sync: false
