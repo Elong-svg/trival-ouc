@@ -1,0 +1,885 @@
+/* ========================================
+   海大文旅 - 现代化UI设计系统 v3.0
+   基于2024-2026设计趋势专家报告重构
+   科技感 + 呼吸感 + 现代感 + 设计感
+   ======================================== */
+
+/* ========== 1. 设计令牌 ========== */
+:root {
+    /* 海大校色体系 */
+    --primary: #005EB8;
+    --primary-light: #4098D7;
+    --primary-dark: #003A70;
+    --accent: #6EC1E4;
+    
+    /* 兼容旧变量名 */
+    --primary-color: #005EB8;
+    --secondary-color: #4098D7;
+    --accent-color: #6EC1E4;
+    --bg-color: #f8fafc;
+    --text-color: #1e293b;
+    --card-bg: rgba(255, 255, 255, 0.85);
+    
+    /* 中性色 */
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-600: #475569;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+    
+    /* 渐变系统 */
+    --gradient-primary: linear-gradient(135deg, #005EB8 0%, #4098D7 50%, #6EC1E4 100%);
+    --gradient-hero: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-1: linear-gradient(135deg, #005EB8 0%, #4098D7 50%, #6EC1E4 100%);
+    --gradient-2: linear-gradient(135deg, #4098D7 0%, #6EC1E4 100%);
+    --gradient-mesh: 
+        radial-gradient(at 40% 20%, rgba(0, 94, 184, 0.15) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, rgba(64, 152, 215, 0.12) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, rgba(110, 193, 228, 0.1) 0px, transparent 50%),
+        radial-gradient(at 80% 50%, rgba(0, 94, 184, 0.08) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(64, 152, 215, 0.1) 0px, transparent 50%),
+        radial-gradient(at 80% 100%, rgba(110, 193, 228, 0.12) 0px, transparent 50%);
+    
+    /* 毛玻璃系统 */
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-bg-light: rgba(255, 255, 255, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-blur: blur(20px);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    
+    /* 阴影系统 */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.2);
+    --shadow-glow: 0 0 40px rgba(0, 94, 184, 0.3);
+    --shadow-card: 0 4px 20px rgba(0, 94, 184, 0.1);
+    --shadow-card-hover: 0 12px 40px rgba(0, 94, 184, 0.2);
+    --card-shadow: 0 4px 20px rgba(0, 94, 184, 0.1);
+    --hover-shadow: 0 12px 40px rgba(0, 94, 184, 0.2);
+    --glow-shadow: 0 0 30px rgba(0, 94, 184, 0.15);
+    --neon-shadow: 0 8px 25px rgba(0, 94, 184, 0.25);
+    
+    /* 圆角系统 */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+    --radius-full: 9999px;
+    
+    /* 间距系统 - 8px基准，呼吸感 */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+    --space-3xl: 64px;
+    --space-4xl: 96px;
+    --space-5xl: 128px;
+    
+    /* 动画系统 */
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ========== 2. 全局重置与基础 ========== */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+}
+
+body {
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', -apple-system, sans-serif;
+    line-height: 1.8;
+    color: var(--gray-800);
+    background: linear-gradient(180deg, #f0f7ff 0%, #e8f4ff 30%, #f5f9ff 60%, #ffffff 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 网格渐变背景 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--gradient-mesh);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* ========== 3. 导航栏 - 毛玻璃 ========== */
+.main-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: var(--space-md) var(--space-3xl);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all var(--duration-normal) var(--ease-default);
+}
+
+.logo img {
+    height: 48px;
+    width: auto;
+    transition: transform var(--duration-normal) var(--ease-default);
+}
+
+.logo .logo-svg {
+    height: 44px;
+    width: auto;
+    transition: transform var(--duration-normal) var(--ease-default);
+    filter: drop-shadow(0 1px 2px rgba(0, 94, 184, 0.1));
+}
+
+.logo img:hover,
+.logo .logo-svg:hover {
+    transform: scale(1.05);
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: var(--space-xl);
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--gray-800);
+    font-weight: 500;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    transition: all var(--duration-normal) var(--ease-default);
+    position: relative;
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--gradient-primary);
+    transition: all var(--duration-normal) var(--ease-default);
+    transform: translateX(-50%);
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--primary);
+    background: rgba(0, 94, 184, 0.08);
+}
+
+.nav-links a:hover::after,
+.nav-links a.active::after {
+    width: 80%;
+}
+
+/* ========== 4. Hero区域 - 全屏视差 ========== */
+.hero-banner {
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-top: 80px;
+}
+
+.hero-banner img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0, 58, 112, 0.7), rgba(0, 94, 184, 0.5));
+    z-index: 0;
+}
+
+.hero-text {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: white;
+    max-width: 900px;
+    padding: var(--space-3xl);
+    margin: 0 auto;
+    animation: fadeInUp var(--duration-slow) var(--ease-default);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-text h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 800;
+    margin-bottom: var(--space-lg);
+    line-height: 1.2;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.hero-text p {
+    font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+    margin-bottom: var(--space-2xl);
+    opacity: 0.95;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.hero-btn {
+    display: inline-block;
+    padding: var(--space-md) var(--space-2xl);
+    background: white;
+    color: var(--primary);
+    text-decoration: none;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all var(--duration-normal) var(--ease-default);
+    box-shadow: var(--shadow-lg);
+}
+
+.hero-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    background: var(--gray-50);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========== 5. 内容区块 - 呼吸感 ========== */
+section {
+    padding: var(--space-5xl) var(--space-3xl);
+}
+
+section h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: var(--space-3xl);
+    color: var(--gray-900);
+    position: relative;
+}
+
+section h2::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background: var(--gradient-primary);
+    margin: var(--space-md) auto 0;
+    border-radius: var(--radius-full);
+}
+
+/* 关于海大旅游区域 */
+.anime-intro {
+    background: linear-gradient(180deg, #ffffff 0%, var(--gray-50) 100%);
+}
+
+.intro-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.intro-text {
+    max-width: 900px;
+    margin: 0 auto var(--space-3xl);
+}
+
+.intro-text p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--gray-600);
+}
+
+/* ========== 6. 卡片系统 - 现代悬浮 ========== */
+.features, .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-2xl);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-item, .news-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    box-shadow: var(--shadow-card);
+    transition: all var(--duration-normal) var(--ease-default);
+    overflow: hidden;
+    text-align: center;
+}
+
+.feature-item:hover, .news-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--primary-light);
+}
+
+.feature-icon {
+    font-size: 3.5rem;
+    margin-bottom: var(--space-lg);
+    display: block;
+}
+
+.feature-item h3, .news-content h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--space-md);
+}
+
+.feature-item p, .news-content p {
+    color: var(--gray-600);
+    line-height: 1.8;
+}
+
+.news-card img {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-lg);
+    transition: transform var(--duration-slow) var(--ease-default);
+}
+
+.news-card:hover img {
+    transform: scale(1.05);
+}
+
+.news-content {
+    text-align: left;
+}
+
+.news-date {
+    display: inline-block;
+    margin-top: var(--space-md);
+    padding: var(--space-xs) var(--space-md);
+    background: rgba(0, 94, 184, 0.1);
+    color: var(--primary);
+    border-radius: var(--radius-full);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* 查看更多按钮居中 */
+.news-more {
+    text-align: center;
+    margin-top: var(--space-3xl);
+}
+
+/* ========== 7. 视频区域 ========== */
+.video-preview {
+    background: linear-gradient(135deg, var(--gray-100), var(--gray-50));
+    text-align: center;
+}
+
+.video-container {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+    margin: 0 auto;
+}
+
+.video-placeholder {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+}
+
+.video-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.play-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 94, 184, 0.3);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--duration-normal) var(--ease-default);
+}
+
+.play-overlay:hover {
+    background: rgba(0, 94, 184, 0.5);
+}
+
+.play-button {
+    width: 90px;
+    height: 90px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    transition: all var(--duration-normal) var(--ease-default);
+}
+
+.play-button span {
+    color: var(--primary);
+    font-size: 2.2rem;
+    margin-left: 5px;
+}
+
+.video-placeholder:hover .play-button {
+    transform: scale(1.15);
+    box-shadow: var(--shadow-xl);
+}
+
+.video-description {
+    text-align: center;
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl) var(--space-2xl);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--glass-border);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: var(--shadow-card);
+}
+
+.video-description h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--space-md);
+}
+
+.video-description p {
+    font-size: 1.05rem;
+    color: var(--gray-600);
+    line-height: 1.7;
+}
+
+/* ========== 8. 按钮系统 ========== */
+.more-btn {
+    display: inline-block;
+    padding: var(--space-md) var(--space-2xl);
+    background: var(--gradient-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    transition: all var(--duration-normal) var(--ease-default);
+    box-shadow: 0 4px 15px rgba(0, 94, 184, 0.3);
+}
+
+.more-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 94, 184, 0.4);
+}
+
+/* ========== 9. 页脚 - 现代设计 ========== */
+footer {
+    background: var(--gray-900);
+    color: white;
+    padding: var(--space-4xl) var(--space-3xl) var(--space-xl);
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-3xl);
+}
+
+.footer-section h4 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: var(--space-lg);
+    color: var(--accent);
+}
+
+.footer-section ul {
+    list-style: none;
+}
+
+.footer-section a {
+    color: var(--gray-300);
+    text-decoration: none;
+    display: block;
+    margin-bottom: var(--space-sm);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.footer-section a:hover {
+    color: white;
+    transform: translateX(4px);
+}
+
+.footer-bottom {
+    margin-top: var(--space-3xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    color: var(--gray-300);
+    font-size: 0.9rem;
+}
+
+/* ========== 10. 汉堡菜单 ========== */
+.hamburger {
+    display: none;
+    cursor: pointer;
+    padding: var(--space-sm);
+    border-radius: var(--radius-md);
+    background: rgba(0, 94, 184, 0.1);
+    transition: background var(--duration-fast) var(--ease-default);
+}
+
+.hamburger span {
+    display: block;
+    width: 24px;
+    height: 3px;
+    background: var(--gray-800);
+    margin: 5px 0;
+    border-radius: 2px;
+    transition: all var(--duration-normal) var(--ease-default);
+}
+
+.hamburger:hover {
+    background: rgba(0, 94, 184, 0.2);
+}
+
+/* ========== 11. 响应式设计 ========== */
+@media (max-width: 768px) {
+    .hamburger {
+        display: block;
+    }
+    
+    .nav-links {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 80%;
+        height: 100vh;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: var(--space-xl);
+        transition: right var(--duration-normal) var(--ease-default);
+        box-shadow: var(--shadow-xl);
+    }
+    
+    .nav-links.active {
+        right: 0;
+    }
+    
+    section {
+        padding: var(--space-3xl) var(--space-lg);
+    }
+    
+    .features, .news-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-xl);
+    }
+    
+    .hero-text h1 {
+        font-size: 2.5rem;
+    }
+}
+
+/* ========== 12. 动画性能优化 ========== */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ========== 13. 滚动动画 ========== */
+.fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s var(--ease-default), transform 0.6s var(--ease-default);
+}
+
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.slide-in-left {
+    opacity: 0;
+    transform: translateX(-50px);
+    transition: opacity 0.6s var(--ease-default), transform 0.6s var(--ease-default);
+}
+
+.slide-in-left.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.slide-in-right {
+    opacity: 0;
+    transform: translateX(50px);
+    transition: opacity 0.6s var(--ease-default), transform 0.6s var(--ease-default);
+}
+
+.slide-in-right.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.scale-in {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.5s var(--ease-default), transform 0.5s var(--ease-default);
+}
+
+.scale-in.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ========== 14. 表单系统优化 ========== */
+.form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    color: var(--gray-800);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: var(--space-md);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all var(--duration-normal) var(--ease-default);
+    background: white;
+    color: var(--gray-800);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(0, 94, 184, 0.1);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: var(--gray-300);
+}
+
+/* ========== 15. 按钮系统增强 ========== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-xl);
+    border: none;
+    border-radius: var(--radius-full);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-default);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 94, 184, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 94, 184, 0.4);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-text {
+    background: transparent;
+    color: var(--primary);
+    padding: var(--space-sm) var(--space-md);
+}
+
+.btn-text:hover {
+    background: rgba(0, 94, 184, 0.08);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* ========== 16. 加载动画 ========== */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ========== 17. 工具提示 ========== */
+.tooltip {
+    position: relative;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    padding: var(--space-xs) var(--space-md);
+    background: var(--gray-900);
+    color: white;
+    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-default), transform var(--duration-fast) var(--ease-default);
+}
+
+.tooltip:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+/* ========== 18. 页面标题统一样式 ========== */
+.page-title {
+    text-align: center;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--space-3xl);
+    position: relative;
+}
+
+.page-title::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background: var(--gradient-primary);
+    margin: var(--space-md) auto 0;
+    border-radius: var(--radius-full);
+}
+
+/* ========== 19. 内页通用布局 ========== */
+.inner-page {
+    padding: 120px 5% 60px;
+    min-height: calc(100vh - 200px);
+}
+
+/* ========== 20. 汉堡菜单动画 ========== */
+.hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+}

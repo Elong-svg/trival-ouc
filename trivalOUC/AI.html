@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI助手 - 海大文旅</title>
+    <link rel="stylesheet" href="css/style.css?v=5.0">
+    <link rel="stylesheet" href="css/AI.css?v=5.0">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="main-nav">
+            <div class="logo">
+                <img src="images/logo-new.png" alt="中国海洋大学" class="logo-svg">
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="map.html">地图指引</a></li>
+                <li><a href="AI.html" class="active">AI助手</a></li>
+                <li><a href="resources.html">相关资源</a></li>
+                <li><a href="contact.html">联系我们</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="ai-page">
+        <section class="ai-hero">
+            <div class="ai-hero-content">
+                <div class="ai-badge">
+                    <svg class="ai-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                    <span>智能助手</span>
+                </div>
+                <h1 class="ai-hero-title">YExplorer</h1>
+                <p class="ai-hero-subtitle">带你逛遍美丽海大，探索无限可能</p>
+            </div>
+        </section>
+        
+        <section class="ai-container">
+            <div class="ai-card">
+                <div class="ai-card-header">
+                    <div class="ai-card-title-wrapper">
+                        <div class="ai-logo-icon">
+                            <img src="images/AI助手形象.png" alt="AI助手">
+                        </div>
+                        <h2>小探——你的海大朋友</h2>
+                    </div>
+                    <div class="ai-header-right">
+                        <div class="age-selector">
+                            <svg class="age-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <select id="age-group" class="age-select">
+                                <option value="primary_low">小学1-3年级（6-9岁）</option>
+                                <option value="primary_high">小学4-6年级（10-12岁）</option>
+                                <option value="middle_school">初中7-9年级（13-15岁）</option>
+                                <option value="high_school" selected>高中10-12年级（16-18岁）</option>
+                            </select>
+                        </div>
+                        <div class="ai-status">
+                            <span class="ai-status-dot"></span>
+                            <span>在线</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-quick-section">
+                    <div class="ai-quick-header">
+                        <svg class="ai-quick-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        <span class="ai-quick-title">快捷指引</span>
+                    </div>
+                    <div class="ai-quick-grid">
+                        <button class="ai-quick-item" data-question="介绍一下海大校园景点">
+                            <svg class="ai-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>校园景点介绍</span>
+                        </button>
+                        <button class="ai-quick-item" data-question="如何使用地图指引功能">
+                            <svg class="ai-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                                <line x1="8" y1="2" x2="8" y2="18"></line>
+                                <line x1="16" y1="6" x2="16" y2="22"></line>
+                            </svg>
+                            <span>地图使用说明</span>
+                        </button>
+                        <button class="ai-quick-item" data-question="有哪些研学相关的学习资源">
+                            <svg class="ai-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                            </svg>
+                            <span>研学学习资源</span>
+                        </button>
+                        <button class="ai-quick-item" data-question="如何联系你们">
+                            <svg class="ai-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            <span>联系方式</span>
+                        </button>
+                        <button class="ai-quick-item" data-question="帮我写一段研学旅行文案">
+                            <svg class="ai-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 20h9"></path>
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                            </svg>
+                            <span>生成研学文案</span>
+                        </button>
+                        <button class="ai-quick-item" data-question="介绍研学路线规划">
+                            <svg class="ai-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span>研学路线规划</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <span class="chat-header-title">对话窗口</span>
+                        <button class="chat-clear-btn" id="clear-chat" title="清空对话">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="chat-window" class="chat-window">
+                        <div class="chat-message ai">
+                            <div class="message-avatar">
+                                <img src="images/AI助手形象.png" alt="AI助手">
+                            </div>
+                            <div class="message-content">
+                                <div class="message-sender">小探</div>
+                                <div class="message-text">嗨～我是小探，你的海大朋友！👋 有什么想了解的，或者需要我帮忙的，尽管说哦～</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-wrapper">
+                        <div class="chat-input-container">
+                            <input type="text" id="user-input" class="chat-input" placeholder="请输入你想提问的内容..." autocomplete="off">
+                            <button id="send-btn" class="chat-send-btn">
+                                <svg class="btn-icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                                <span class="btn-text">发送</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="quick-nav-section">
+            <div class="quick-nav-header">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                <h2 class="quick-nav-title">快捷导航</h2>
+            </div>
+            <div class="quick-nav-wrapper">
+                <a href="map.html" class="quick-nav-card">
+                    <div class="card-icon-wrapper">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                            <line x1="8" y1="2" x2="8" y2="18"></line>
+                            <line x1="16" y1="6" x2="16" y2="22"></line>
+                        </svg>
+                    </div>
+                    <div class="card-text">地图指引</div>
+                    <svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+                <a href="resources.html" class="quick-nav-card">
+                    <div class="card-icon-wrapper">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="card-text">相关资源</div>
+                    <svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+                <a href="contact.html" class="quick-nav-card">
+                    <div class="card-icon-wrapper">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                    </div>
+                    <div class="card-text">联系我们</div>
+                    <svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const guideItems = document.querySelectorAll('.ai-quick-item');
+        const clearChatBtn = document.getElementById('clear-chat');
+        const ageGroupSelect = document.getElementById('age-group');
+
+        const API_CONFIG = {
+            baseUrl: 'http://localhost:5000',
+            model: 'qwen3-max-2026-01-23'
+        };
+
+        const OUC_KNOWLEDGE_BASE = `
+# 中国海洋大学核心知识库
+
+## 学校概况
+- 中文名：中国海洋大学（Ocean University of China）
+- 简称：海大（OUC）
+- 创办时间：1924年
+- 办学性质：公立大学，教育部直属全国重点大学
+- 学校层次：国家"双一流"A类、"985工程"、"211工程"重点建设高校
+- 校训：海纳百川，取则行远
+- 校歌：《拥抱海洋》
+
+## 校区分布
+### 1. 鱼山校区（老校区）
+- 地址：青岛市市南区鱼山路5号
+- 特色：历史悠久的老校区，德式建筑群，毗邻小鱼山公园和第一海水浴场
+- 主要景点：
+  * 六二楼：标志性建筑，建于1931年
+  * 胜利楼：历史建筑，见证学校发展
+  * 海洋馆：展示海洋生物标本
+  * 校园内的樱花大道（春季赏花胜地）
+  * 德式建筑群：红瓦绿树，欧式风格
+
+### 2. 崂山校区（主校区）
+- 地址：青岛市崂山区松岭路238号
+- 特色：现代化校区，占地广阔，设施完善
+- 主要景点：
+  * 图书馆：现代化图书馆，藏书丰富
+  * 海洋科技大楼
+  * 学生活动中心
+  * 中心广场
+  * 樱花大道（春季）
+  * 人工湖
+
+### 3. 西海岸校区
+- 地址：青岛市西海岸新区
+- 特色：新建校区，聚焦海洋科学与工程
+
+## 学科特色
+- 优势学科：海洋科学、水产、大气科学、港口海岸及近海工程
+- 海洋科学：全国排名第一
+- 水产学科：全国领先
+- 特色专业：海洋技术、海洋资源开发、海洋生物学、船舶与海洋工程
+
+## 校园文化
+- 特色活动：
+  * 海洋文化节
+  * 毕业季樱花观赏
+  * 学术讲座（海洋论坛）
+  * 帆船体验活动
+- 社团组织：海洋保护协会、潜水协会、帆船协会等
+
+## 研学资源
+- 海洋博物馆：展示海洋生物多样性
+- 海洋国家重点实验室
+- 标本馆：海洋生物标本收藏
+- 校史馆：学校发展历程展示
+- 海洋观测站
+
+## 周边景点
+- 小鱼山公园：俯瞰青岛湾美景
+- 第一海水浴场：青岛最著名的海滩
+- 鲁迅公园：海滨公园
+- 青岛海底世界
+- 八大关风景区：万国建筑博览
+- 栈桥：青岛标志性建筑
+- 五四广场：现代青岛地标
+
+## 实用信息
+- 官方网站：www.ouc.edu.cn
+- 招生热线：0532-66782426
+- 地址：山东省青岛市
+- 气候：温带季风气候，四季分明
+- 最佳参观季节：春季（4-5月樱花季）和秋季（9-10月）
+`;
+
+        const AGE_PROMPT_CONFIG = {
+            primary_low: {
+                style: '使用非常简单易懂的语言，多用比喻和生动的描述。回答要简短有趣，避免复杂概念。可以使用emoji增加趣味性。重点介绍有趣的海洋生物、校园美景和互动体验。用讲故事的方式介绍海大。',
+                tone: '亲切、活泼、鼓励性、童趣',
+                length: '控制在150字以内'
+            },
+            primary_high: {
+                style: '使用简单但有一定知识性的语言。可以介绍一些基础的海洋科学知识和海大历史。回答要有趣且富有教育意义，激发好奇心。适合小学高年级学生研学使用。',
+                tone: '友好、启发性、知识性、趣味',
+                length: '控制在250字以内'
+            },
+            middle_school: {
+                style: '使用青少年熟悉的语言，结合初中学习知识点。可以涉及海洋科学原理、历史背景和地理知识。回答要有教育意义，激发探索兴趣。适合初中生研学使用，可以引导思考。',
+                tone: '友好、启发性、知识性、引导性',
+                length: '控制在400字以内'
+            },
+            high_school: {
+                style: '使用较为专业的语言，可以深入介绍海大的学科优势、科研实力和校园文化。结合高中知识点，提供深度解读。适合高中生研学和升学参考。可以涉及专业选择和职业规划建议。',
+                tone: '专业、详实、启发性、前瞻性',
+                length: '控制在500字以内'
+            }
+        };
+
+        function getSystemPrompt() {
+            const currentAge = ageGroupSelect.value;
+            const ageConfig = AGE_PROMPT_CONFIG[currentAge];
+            
+            return `你是"小探"，中国海洋大学(YExplorer)的专属AI导游助手，也是用户的海大朋友。
+
+${OUC_KNOWLEDGE_BASE}
+
+## 你的角色定位
+- 你是中国海洋大学的专业导游和研学助手
+- 你深入了解海大的历史、文化、景点和研学资源
+- 你能为不同年龄段的用户提供合适的讲解服务
+
+## 当前服务对象
+年龄段：${currentAge}
+回答风格要求：
+- 语言风格：${ageConfig.style}
+- 语气：${ageConfig.tone}
+- 长度：${ageConfig.length}
+
+## 回答原则
+1. 始终基于上述知识库内容回答问题
+2. 如果知识库中没有的信息，请说明"这个信息我暂时不了解，建议您查阅海大官网或咨询学校相关部门"
+3. 优先推荐海大特色景点和研学资源
+4. 提供实用的参观建议和路线规划
+5. 保持友好、专业的服务态度
+6. 根据用户年龄段调整回答的深度和风格`;
+        }
+
+        let conversationHistory = [];
+
+        function initConversation() {
+            conversationHistory = [
+                {
+                    role: 'system',
+                    content: getSystemPrompt()
+                }
+            ];
+        }
+
+        initConversation();
+
+        ageGroupSelect.addEventListener('change', () => {
+            conversationHistory[0].content = getSystemPrompt();
+        });
+
+        function addUserMsg(text) {
+            const msg = document.createElement('div');
+            msg.className = 'chat-message user';
+            msg.innerHTML = `
+                <div class="message-content">
+                    <div class="message-sender">你</div>
+                    <div class="message-text">${text}</div>
+                </div>
+                <div class="message-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+            `;
+            chatWindow.appendChild(msg);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        async function typeWriterEffect(element, text, speed = 30) {
+            const textContainer = element.querySelector('.message-text') || element;
+            const senderName = element.querySelector('.message-sender');
+            let index = 0;
+            
+            if (!element.querySelector('.message-text')) {
+                element.innerHTML = `
+                    <div class="message-avatar">
+                        <img src="images/AI助手形象.png" alt="AI助手">
+                    </div>
+                    <div class="message-content">
+                        <div class="message-sender">小探</div>
+                        <div class="message-text"></div>
+                    </div>
+                `;
+            }
+            
+            const targetElement = element.querySelector('.message-text');
+            
+            return new Promise((resolve) => {
+                const typingInterval = setInterval(() => {
+                    if (index < text.length) {
+                        const currentText = text.substring(0, index + 1);
+                        targetElement.innerHTML = marked.parse(currentText);
+                        index++;
+                        chatWindow.scrollTop = chatWindow.scrollHeight;
+                    } else {
+                        targetElement.innerHTML = marked.parse(text);
+                        clearInterval(typingInterval);
+                        resolve();
+                    }
+                }, speed);
+            });
+        }
+
+        async function sendMsg() {
+            const userText = userInput.value.trim();
+            if (!userText) return;
+
+            addUserMsg(userText);
+            userInput.value = '';
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = `<svg class="btn-icon-loading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> <span class="btn-text">思考中...</span>`;
+
+            conversationHistory.push({
+                role: 'user',
+                content: userText
+            });
+
+            try {
+                console.log('正在调用API...');
+                console.log('API URL:', `${API_CONFIG.baseUrl}/api/chat`);
+                
+                const res = await fetch(`${API_CONFIG.baseUrl}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: conversationHistory
+                    })
+                });
+
+                console.log('API响应状态:', res.status);
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('API错误详情:', errorText);
+                    
+                    let errorMessage = `API请求失败 (${res.status})`;
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.message || errorData.error?.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = errorText || errorMessage;
+                    }
+                    
+                    if (res.status === 401) {
+                        errorMessage = 'API Key无效或已过期，请检查配置';
+                    } else if (res.status === 429) {
+                        errorMessage = '请求过于频繁，请稍后再试';
+                    } else if (res.status === 0) {
+                        errorMessage = '网络错误或CORS限制，请检查网络连接';
+                    }
+                    
+                    throw new Error(errorMessage);
+                }
+
+                const result = await res.json();
+                console.log('API调用成功，响应:', result);
+                
+                let aiReply;
+                if (result.reply) {
+                    aiReply = result.reply;
+                } else if (result.error) {
+                    throw new Error(result.error);
+                } else {
+                    console.error('API响应格式异常:', result);
+                    throw new Error('API响应格式异常，未找到回复内容');
+                }
+                
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: aiReply
+                });
+
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'chat-message ai';
+                chatWindow.appendChild(aiMsg);
+                
+                await typeWriterEffect(aiMsg, aiReply);
+            } catch (err) {
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'chat-message ai';
+                chatWindow.appendChild(errorMsg);
+                await typeWriterEffect(errorMsg, `请求失败：${err.message}`);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = `<svg class="btn-icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> <span class="btn-text">发送</span>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMsg);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMsg();
+        });
+        
+        guideItems.forEach(item => {
+            item.addEventListener('click', () => {
+                userInput.value = item.dataset.question;
+                sendMsg();
+            });
+        });
+
+        if (clearChatBtn) {
+            clearChatBtn.addEventListener('click', () => {
+                const messages = chatWindow.querySelectorAll('.chat-message');
+                if (messages.length > 1) {
+                    for (let i = 1; i < messages.length; i++) {
+                        chatWindow.removeChild(messages[i]);
+                    }
+                }
+                initConversation();
+            });
+        }
+    </script>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>关于我们</h4>
+                <p>YExplorer研探海大研学网站，致力于分享更多精彩内容</p>
+            </div>
+            <div class="footer-section">
+                <h4>快速链接</h4>
+                <ul>
+                    <li><a href="map.html">地图指引</a></li>
+                    <li><a href="AI.html">AI助手</a></li>
+                    <li><a href="resources.html">相关资源</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 新核创研社 版权所有</p>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
