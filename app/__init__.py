@@ -9,7 +9,10 @@ import os
 
 def create_app():
     """应用工厂函数 - Flask 官方推荐写法"""
-    app = Flask(__name__, static_folder='static', static_url_path='')
+    # 使用绝对路径确保 Render 上能找到 static 文件
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    static_dir = os.path.join(base_dir, 'static')
+    app = Flask(__name__, static_folder=static_dir, static_url_path='')
     CORS(app)
 
     # 阿里云配置
