@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YExplorer AI - 调试工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    
+    .section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .section h2 {
+      color: #666;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      resize: vertical;
+    }
+    
+    button {
+      background: #1890ff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 10px;
+      margin-top: 10px;
+    }
+    
+    button:hover {
+      background: #40a9ff;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .log-area {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 500px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+      border-bottom: 1px solid #333;
+    }
+    
+    .log-info { color: #4ec9b0; }
+    .log-error { color: #f48771; }
+    .log-success { color: #b5cea8; }
+    .log-warning { color: #dcdcaa; }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .status-ok {
+      background: #52c41a;
+      color: white;
+    }
+    
+    .status-error {
+      background: #ff4d4f;
+      color: white;
+    }
+    
+    .status-warning {
+      background: #faad14;
+      color: white;
+    }
+    
+    .test-cases {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .test-case {
+      background: #f9f9f9;
+      padding: 12px;
+      border-radius: 4px;
+      border: 1px solid #e8e8e8;
+    }
+    
+    .test-case h3 {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .test-case p {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    
+    .test-case button {
+      width: 100%;
+      margin: 0;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 YExplorer AI 调试工具</h1>
+    
+    <div class="section">
+      <h2>系统状态检查</h2>
+      <div id="health-status">
+        <button onclick="checkHealth()">检查健康状态</button>
+        <span id="health-result"></span>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>快速测试用例</h2>
+      <div class="test-cases">
+        <div class="test-case">
+          <h3>简单问候</h3>
+          <p>测试基本对话功能</p>
+          <button onclick="testChat('你好，请介绍一下自己')">测试</button>
+        </div>
+        <div class="test-case">
+          <h3>海大简介</h3>
+          <p>测试知识库检索</p>
+          <button onclick="testChat('请介绍一下中国海洋大学')">测试</button>
+        </div>
+        <div class="test-case">
+          <h3>专业分析</h3>
+          <p>测试复杂问题处理</p>
+          <button onclick="testChat('分析ACCA专业的就业前景')">测试</button>
+        </div>
+        <div class="test-case">
+          <h3>历史问题</h3>
+          <p>测试历史相关内容</p>
+          <button onclick="testChat('关于学习近现代史有什么建议吗')">测试</button>
+        </div>
+        <div class="test-case">
+          <h3>长文本测试</h3>
+          <p>测试长文本处理能力</p>
+          <button onclick="testChat('请详细分析中国海洋大学的学科优势、科研实力、校园文化、校区分布、历史沿革等各个方面，给出一个全面的介绍')">测试</button>
+        </div>
+        <div class="test-case">
+          <h3>边界测试</h3>
+          <p>测试空消息处理</p>
+          <button onclick="testChat('')">测试</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>自定义测试</h2>
+      <textarea id="test-input" placeholder="输入要测试的问题..."></textarea>
+      <div>
+        <button onclick="testCustomChat()">发送测试</button>
+        <button onclick="clearLogs()">清空日志</button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>调试日志</h2>
+      <div class="log-area" id="log-area"></div>
+    </div>
+  </div>
+  
+  <script>
+    const API_URL = '/api/chat';
+    const HEALTH_URL = '/api/health';
+    
+    function addLog(message, type = 'info') {
+      const logArea = document.getElementById('log-area');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.textContent = `[${timestamp}] ${message}`;
+      logArea.appendChild(entry);
+      logArea.scrollTop = logArea.scrollHeight;
+    }
+    
+    function clearLogs() {
+      document.getElementById('log-area').innerHTML = '';
+    }
+    
+    async function checkHealth() {
+      addLog('开始检查健康状态...', 'info');
+      try {
+        const response = await fetch(HEALTH_URL);
+        const data = await response.json();
+        
+        addLog(`健康检查响应: ${JSON.stringify(data)}`, 'success');
+        
+        const resultEl = document.getElementById('health-result');
+        if (data.status === 'ok') {
+          resultEl.innerHTML = `<span class="status-badge status-ok">✓ 正常</span>`;
+          addLog(`API Key状态: ${data.has_api_key ? '已配置' : '未配置'}`, data.has_api_key ? 'success' : 'warning');
+        } else {
+          resultEl.innerHTML = `<span class="status-badge status-error">✗ 异常</span>`;
+          addLog('健康检查失败', 'error');
+        }
+      } catch (error) {
+        addLog(`健康检查错误: ${error.message}`, 'error');
+        document.getElementById('health-result').innerHTML = `<span class="status-badge status-error">✗ 错误</span>`;
+      }
+    }
+    
+    async function testChat(message) {
+      if (!message.trim()) {
+        addLog('测试消息为空，跳过', 'warning');
+        return;
+      }
+      
+      addLog(`\n========== 开始测试 ==========`);
+      addLog(`测试消息: ${message}`, 'info');
+      
+      const startTime = Date.now();
+      
+      try {
+        const payload = {
+          messages: [
+            { role: 'system', content: '你是"小探"，中国海洋大学(YExplorer)的专属AI导游助手。' },
+            { role: 'user', content: message }
+          ],
+          age_group: 'high_school'
+        };
+        
+        addLog(`请求URL: ${API_URL}`, 'info');
+        addLog(`请求体大小: ${JSON.stringify(payload).length} 字符`, 'info');
+        
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        const responseTime = Date.now() - startTime;
+        addLog(`响应时间: ${responseTime}ms`, 'info');
+        addLog(`HTTP状态码: ${response.status}`, response.ok ? 'success' : 'error');
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          addLog(`错误响应: ${errorText}`, 'error');
+          return;
+        }
+        
+        const data = await response.json();
+        addLog(`响应数据: ${JSON.stringify(data).substring(0, 200)}...`, 'success');
+        addLog(`回复长度: ${data.reply ? data.reply.length : 0} 字符`, 'success');
+        addLog(`========== 测试完成 ==========`, 'success');
+        
+      } catch (error) {
+        addLog(`测试错误: ${error.message}`, 'error');
+        addLog(`堆栈: ${error.stack}`, 'error');
+      }
+    }
+    
+    function testCustomChat() {
+      const input = document.getElementById('test-input');
+      const message = input.value.trim();
+      if (!message) {
+        addLog('请输入测试消息', 'warning');
+        return;
+      }
+      testChat(message);
+    }
+    
+    // 页面加载时自动检查健康状态
+    window.addEventListener('load', () => {
+      addLog('调试工具已加载', 'info');
+      checkHealth();
+    });
+  </script>
+</body>
+</html>

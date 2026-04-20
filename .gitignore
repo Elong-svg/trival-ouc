@@ -25,6 +25,7 @@ Thumbs.db
 
 # 环境变量(包含真实 Key 的文件)
 .env
+api_key.py
 
 # 日志
 *.log

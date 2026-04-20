@@ -320,6 +320,10 @@ class ChatManager {
       
       console.log(`[DEBUG] 发送消息数量: ${messagesPayload.length} (系统提示 + ${recentMessages.length} 条历史消息)`);
       console.log(`[DEBUG] 系统提示词长度: ${enhancedSystemPrompt.length} 字符`);
+      console.log(`[DEBUG] 请求URL: ${this.API_URL}`);
+      console.log(`[DEBUG] 请求体大小: ${JSON.stringify({messages: messagesPayload, age_group: ageGroup}).length} 字符`);
+      
+      const requestStartTime = Date.now();
       
       const response = await fetch(this.API_URL, {
         method: 'POST',
@@ -330,9 +334,22 @@ class ChatManager {
         })
       });
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const responseTime = Date.now() - requestStartTime;
+      console.log(`[DEBUG] 响应时间: ${responseTime}ms`);
+      console.log(`[DEBUG] HTTP状态码: ${response.status}`);
+      console.log(`[DEBUG] 响应头:`, Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[ERROR] 请求失败 - 状态码: ${response.status}`);
+        console.error(`[ERROR] 错误响应:`, errorText);
+        throw new Error(`HTTP ${response.status}`);
+      }
       
       const data = await response.json();
+      console.log(`[DEBUG] 响应数据:`, data);
+      console.log(`[DEBUG] 回复长度: ${data.reply ? data.reply.length : 0} 字符`);
+      
       const aiReply = data.reply;
       
       await this.typeWriterEffect(aiReply);
