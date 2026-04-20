@@ -13,6 +13,8 @@ class ChatManager {
     this.welcomePage = document.getElementById('welcome-page');
     this.typewriterTimer = null;
     this.userInput = document.getElementById('user-input');
+    this.cooldownTime = 5000; // 5秒冷却时间
+    this.lastMessageTime = 0;
   }
 
   init() {
@@ -257,8 +259,18 @@ class ChatManager {
 
   async sendMessage(userText) {
     if (this.isWaiting || !userText.trim()) return;
+    
+    // 检查冷却时间
+    const now = Date.now();
+    const timeSinceLastMessage = now - this.lastMessageTime;
+    if (timeSinceLastMessage < this.cooldownTime && this.lastMessageTime > 0) {
+      const remainingTime = Math.ceil((this.cooldownTime - timeSinceLastMessage) / 1000);
+      this.showToast(`小探正在思考中，请${remainingTime}秒后再试～ ⏰`);
+      return;
+    }
 
     this.isWaiting = true;
+    this.lastMessageTime = now;
     this.hideWelcomePage();
     
     this.addMessage('user', userText);
@@ -280,12 +292,15 @@ class ChatManager {
       const agePrompt = ageConfig ? ageConfig.prompt : '';
       const curriculumLink = ageConfig && ageConfig.curriculum_link ? ageConfig.curriculum_link : '';
       
+      // 构建系统提示词
       let enhancedSystemPrompt = systemPrompt + '\n\n' + agePrompt;
       
+      // 添加教材结合要求
       if (curriculumLink) {
         enhancedSystemPrompt += '\n\n## 教材结合要求\n' + curriculumLink + '\n\n请在回答中适当联系学生当前所学的教材内容，帮助他们建立课堂知识与研学内容的联系。';
       }
       
+      // 高中生选科信息（仅在选了3科时添加）
       if (ageGroup === 'high_school' && ageConfig.subjects) {
         const app = window.app;
         const selectedSubjects = app ? app.getSelectedSubjects() : [];
@@ -306,6 +321,7 @@ class ChatManager {
         }
       }
       
+      // 添加知识库上下文
       if (knowledgeContext) {
         enhancedSystemPrompt += `\n\n## 相关知识库参考\n${knowledgeContext}\n\n请基于以上知识库内容，结合你的通用知识，给用户一个详细、生动、符合年龄段的回答。`;
       }
@@ -343,7 +359,20 @@ class ChatManager {
         const errorText = await response.text();
         console.error(`[ERROR] 请求失败 - 状态码: ${response.status}`);
         console.error(`[ERROR] 错误响应:`, errorText);
-        throw new Error(`HTTP ${response.status}`);
+        
+        // 根据状态码返回友好的错误提示
+        let friendlyMessage = '';
+        if (response.status === 504 || response.status === 500) {
+          friendlyMessage = '小探正在思考中，可能有点忙～ 请稍等一下再问我哦！😊';
+        } else if (response.status === 429) {
+          friendlyMessage = '你的问题太多啦，小探需要休息一下～ 稍后再来问我吧！💪';
+        } else if (response.status === 401) {
+          friendlyMessage = '哎呀，小探的通行证好像过期了，请联系管理员更新哦！🔑';
+        } else {
+          friendlyMessage = '小探遇到了一点小问题，请稍后再试～ 🌟';
+        }
+        
+        throw new Error(friendlyMessage);
       }
       
       const data = await response.json();
@@ -358,9 +387,20 @@ class ChatManager {
       await sidebar.loadHistoryList();
       
     } catch (error) {
-      this.addMessage('error', `请求失败：${error.message}`);
+      // 直接显示友好的错误消息，不加"请求失败"前缀
+      this.addMessage('error', error.message);
+      
+      // 确保更新发送按钮状态
+      if (window.app && window.app.updateSendButtonState) {
+        window.app.updateSendButtonState();
+      }
     } finally {
       this.isWaiting = false;
+      
+      // 再次确保更新发送按钮状态
+      if (window.app && window.app.updateSendButtonState) {
+        window.app.updateSendButtonState();
+      }
     }
   }
 
@@ -368,38 +408,90 @@ class ChatManager {
     const text = userText.toLowerCase();
     const kb = CONFIG.OUC_KNOWLEDGE_BASE;
     
-    let relevantSections = [];
-    let maxSections = 2;
+    // 智能关键词匹配 - 使用权重系统
+    const keywordMap = {
+      '校区分布': {
+        keywords: ['景点', '游览', '参观', '校区', '鱼山', '崂山', '浮山', '西海岸', '建筑', '路线', '规划', '导航', '地图'],
+        weight: 3,
+        maxLength: 120
+      },
+      '历史沿革': {
+        keywords: ['校史', '历史', '建校', '校训', '创办', '沿革', '发展', '变迁'],
+        weight: 3,
+        maxLength: 120
+      },
+      '学科特色': {
+        keywords: ['学科', '专业', '学院', '双一流', '优势', '特色', '选科', '升学'],
+        weight: 3,
+        maxLength: 120
+      },
+      '科研实力': {
+        keywords: ['科研', '实验室', '研究', '创新', '技术', '成果', '论文'],
+        weight: 3,
+        maxLength: 120
+      },
+      '周边景点': {
+        keywords: ['周边', '小鱼山', '八大关', '栈桥', '旅游', '游玩', '附近', '景点'],
+        weight: 2,
+        maxLength: 100
+      },
+      '实用信息': {
+        keywords: ['交通', '怎么', '地址', '电话', '官网', '气候', '季节', '参观'],
+        weight: 2,
+        maxLength: 80
+      },
+      '研学资源': {
+        keywords: ['研学', '资源', '博物馆', '标本', '观测', '实践'],
+        weight: 2,
+        maxLength: 100
+      },
+      '校园文化': {
+        keywords: ['美食', '吃', '食堂', '文化', '活动', '社团', '生活'],
+        weight: 2,
+        maxLength: 80
+      },
+      '学校概况': {
+        keywords: ['简介', '概况', '介绍', '海大', '海洋大学', 'ouc', '基本', '什么'],
+        weight: 1,
+        maxLength: 100
+      }
+    };
     
-    if (text.includes('景点') || text.includes('游览') || text.includes('参观')) {
-      relevantSections.push(this.extractSection(kb, '校区分布', 150));
-    } else if (text.includes('校史') || text.includes('历史') || text.includes('建校') || text.includes('校训')) {
-      relevantSections.push(this.extractSection(kb, '历史沿革', 150));
-    } else if (text.includes('学科') || text.includes('专业') || text.includes('学院') || text.includes('双一流')) {
-      relevantSections.push(this.extractSection(kb, '学科特色', 150));
-    } else if (text.includes('科研') || text.includes('实验室') || text.includes('研究')) {
-      relevantSections.push(this.extractSection(kb, '科研实力', 150));
-    } else if (text.includes('周边') || text.includes('小鱼山') || text.includes('八大关') || text.includes('栈桥')) {
-      relevantSections.push(this.extractSection(kb, '周边景点', 150));
-    } else if (text.includes('地图') || text.includes('导航') || text.includes('交通') || text.includes('怎么')) {
-      relevantSections.push(this.extractSection(kb, '实用信息', 100));
-    } else if (text.includes('研学') || text.includes('资源')) {
-      relevantSections.push(this.extractSection(kb, '研学资源', 150));
-    } else if (text.includes('路线') || text.includes('规划')) {
-      relevantSections.push(this.extractSection(kb, '校区分布', 100));
-    } else if (text.includes('美食') || text.includes('吃') || text.includes('食堂')) {
-      relevantSections.push(this.extractSection(kb, '校园文化', 100));
-    } else if (text.includes('简介') || text.includes('概况') || text.includes('介绍海大')) {
-      relevantSections.push(this.extractSection(kb, '学校概况', 150));
+    // 计算每个section的匹配分数
+    const scores = {};
+    for (const [section, config] of Object.entries(keywordMap)) {
+      let score = 0;
+      for (const keyword of config.keywords) {
+        if (text.includes(keyword)) {
+          score += config.weight;
+        }
+      }
+      if (score > 0) {
+        scores[section] = { score, maxLength: config.maxLength };
+      }
     }
     
-    if (relevantSections.length === 0 && (text.includes('海大') || text.includes('海洋大学') || text.includes('ouc'))) {
-      relevantSections.push(this.extractSection(kb, '学校概况', 100));
+    // 按分数排序，取前2个
+    const sortedSections = Object.entries(scores)
+      .sort((a, b) => b[1].score - a[1].score)
+      .slice(0, 2);
+    
+    if (sortedSections.length === 0) {
+      // 如果没有匹配，但提到了海大，返回概况
+      if (text.includes('海大') || text.includes('海洋大学') || text.includes('ouc')) {
+        return this.extractSection(kb, '学校概况', 80);
+      }
+      return null;
     }
+    
+    // 提取匹配的section
+    const relevantSections = sortedSections.map(([section, config]) => 
+      this.extractSection(kb, section, config.maxLength)
+    ).filter(s => s);
     
     if (relevantSections.length > 0) {
-      const result = relevantSections.filter(s => s).join('\n\n');
-      return result.length > 300 ? result.substring(0, 300) + '...' : result;
+      const result = relevantSections.join('\n\n');
+      return result.length > 250 ? result.substring(0, 250) + '...' : result;
     }
     
     return null;

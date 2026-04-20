@@ -39,7 +39,7 @@ def create_app():
     
     app.config['ALIYUN_API_KEY'] = api_key
     app.config['ALIYUN_BASE_URL'] = 'https://coding.dashscope.aliyuncs.com/v1/chat/completions'
-    app.config['ALIYUN_MODEL'] = 'qwen3-max-2026-01-23'
+    app.config['ALIYUN_MODEL'] = 'MiniMax-M2.5'
 
     # ========== 路由 ==========
 
@@ -111,32 +111,45 @@ def create_app():
                 "model": app.config['ALIYUN_MODEL'],
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 2000
+                "max_tokens": 1500,  # 适中的token数，平衡速度和完整性
+                "top_p": 0.8  # 降低一点，提高响应速度
             }
             
             print(f"[DEBUG] {request_id} - 请求payload大小: {len(str(payload))} 字符")
             print(f"[DEBUG] {request_id} - 开始调用阿里云API...")
             
-            response = requests.post(
-                app.config['ALIYUN_BASE_URL'],
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {api_key}"
-                },
-                json=payload,
-                timeout=60
-            )
+            # 优化超时策略 - 使用turbo模型后响应应该很快
+            # 设置20秒超时，不重试（turbo模型通常5秒内响应）
+            timeout_seconds = 20
             
-            elapsed = time.time() - start_time
-            print(f"[DEBUG] {request_id} - API响应时间: {elapsed:.2f}秒")
-            print(f"[DEBUG] {request_id} - HTTP状态码: {response.status_code}")
-            print(f"[DEBUG] {request_id} - 响应头: {dict(response.headers)}")
-            
-            if response.status_code != 200:
-                print(f"[ERROR] {request_id} - API返回错误状态码: {response.status_code}")
-                print(f"[ERROR] {request_id} - 错误响应内容: {response.text[:500]}")
-            
-            response.raise_for_status()
+            try:
+                response = requests.post(
+                    app.config['ALIYUN_BASE_URL'],
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}"
+                    },
+                    json=payload,
+                    timeout=timeout_seconds
+                )
+                
+                elapsed = time.time() - start_time
+                print(f"[DEBUG] {request_id} - API响应时间: {elapsed:.2f}秒")
+                print(f"[DEBUG] {request_id} - HTTP状态码: {response.status_code}")
+                
+                if response.status_code != 200:
+                    print(f"[ERROR] {request_id} - API返回错误状态码: {response.status_code}")
+                    print(f"[ERROR] {request_id} - 错误响应内容: {response.text[:500]}")
+                
+                response.raise_for_status()
+                
+            except requests.exceptions.Timeout as e:
+                print(f"[ERROR] {request_id} - API超时（{timeout_seconds}秒）")
+                return jsonify({
+                    "error": "AI服务响应超时，请稍后重试"
+                }), 504
+            except requests.exceptions.HTTPError as e:
+                raise
 
             result = response.json()
             print(f"[DEBUG] {request_id} - API响应结构: {list(result.keys())}")
