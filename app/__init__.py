@@ -19,27 +19,33 @@ def create_app():
     app = Flask(__name__, static_folder=static_dir, static_url_path='')
     CORS(app)
 
-    # 阿里云配置 - 优先从 api_key.py 读取，其次从环境变量读取
-    api_key = None
+    # 智谱 GLM 配置 - 优先从 api_key.py 读取，其次从环境变量读取
+    api_key_value = None
     
     # 尝试从 api_key.py 读取（本地开发使用）
     try:
-        import api_key
-        api_key = getattr(api_key, 'ALIYUN_API_KEY', None)
-        if api_key:
+        import api_key as api_key_module
+        api_key_value = getattr(api_key_module, 'GLM_API_KEY', None) or getattr(api_key_module, 'HUNYUAN_API_KEY', None) or getattr(api_key_module, 'ALIYUN_API_KEY', None)
+        if api_key_value:
             print(f"[INFO] 从 api_key.py 加载 API Key")
-    except ImportError:
-        pass
+            print(f"[DEBUG] API Key 前10位: {api_key_value[:10]}...")
+    except ImportError as e:
+        print(f"[WARN] 无法导入 api_key.py: {e}")
+    except Exception as e:
+        print(f"[ERROR] 加载 api_key.py 时出错: {e}")
     
     # 如果 api_key.py 不存在，从环境变量读取（部署时使用）
-    if not api_key:
-        api_key = os.environ.get('ALIYUN_API_KEY', '')
-        if api_key:
+    if not api_key_value:
+        api_key_value = os.environ.get('GLM_API_KEY', '') or os.environ.get('HUNYUAN_API_KEY', '') or os.environ.get('ALIYUN_API_KEY', '')
+        if api_key_value:
             print(f"[INFO] 从环境变量加载 API Key")
     
-    app.config['ALIYUN_API_KEY'] = api_key
-    app.config['ALIYUN_BASE_URL'] = 'https://coding.dashscope.aliyuncs.com/v1/chat/completions'
-    app.config['ALIYUN_MODEL'] = 'MiniMax-M2.5'
+    if not api_key_value:
+        print("[ERROR] 警告: 未能加载任何 API Key!")
+    
+    app.config['ALIYUN_API_KEY'] = api_key_value
+    app.config['ALIYUN_BASE_URL'] = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+    app.config['ALIYUN_MODEL'] = 'GLM-4-Flash-250414'
 
     # ========== 路由 ==========
 
@@ -104,6 +110,7 @@ def create_app():
             
             print(f"[DEBUG] {request_id} - API Key状态: {'已配置' if api_key else '未配置'}")
             print(f"[DEBUG] {request_id} - API Key前缀: {api_key[:10]}...")
+            print(f"[DEBUG] {request_id} - 实际请求中的Authorization: Bearer {api_key[:10]}...")
             print(f"[DEBUG] {request_id} - 目标模型: {app.config['ALIYUN_MODEL']}")
             print(f"[DEBUG] {request_id} - API地址: {app.config['ALIYUN_BASE_URL']}")
 
@@ -111,16 +118,17 @@ def create_app():
                 "model": app.config['ALIYUN_MODEL'],
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 1500,  # 适中的token数，平衡速度和完整性
-                "top_p": 0.8  # 降低一点，提高响应速度
+                "max_tokens": 1500,
+                "top_p": 0.8,
+                "enable_search": True,
+                "stream": True  # 启用流式响应
             }
             
             print(f"[DEBUG] {request_id} - 请求payload大小: {len(str(payload))} 字符")
-            print(f"[DEBUG] {request_id} - 开始调用阿里云API...")
+            print(f"[DEBUG] {request_id} - 开始调用阿里云API（流式模式）...")
             
-            # 优化超时策略 - 使用turbo模型后响应应该很快
-            # 设置20秒超时，不重试（turbo模型通常5秒内响应）
-            timeout_seconds = 20
+            # 流式响应超时设置
+            timeout_seconds = 30
             
             try:
                 response = requests.post(
@@ -130,46 +138,86 @@ def create_app():
                         "Authorization": f"Bearer {api_key}"
                     },
                     json=payload,
-                    timeout=timeout_seconds
+                    timeout=timeout_seconds,
+                    stream=True  # 启用流式请求
                 )
                 
                 elapsed = time.time() - start_time
-                print(f"[DEBUG] {request_id} - API响应时间: {elapsed:.2f}秒")
+                print(f"[DEBUG] {request_id} - API首字响应时间: {elapsed:.2f}秒")
                 print(f"[DEBUG] {request_id} - HTTP状态码: {response.status_code}")
                 
                 if response.status_code != 200:
                     print(f"[ERROR] {request_id} - API返回错误状态码: {response.status_code}")
                     print(f"[ERROR] {request_id} - 错误响应内容: {response.text[:500]}")
+                    return jsonify({"error": "AI服务响应错误"}), response.status_code
                 
-                response.raise_for_status()
+                # 流式响应生成器
+                def generate():
+                    import json as json_module
+                    import re
+                    full_content = ""
+                    in_tool_call = False
+                    tool_call_buffer = ""
+                    
+                    for line in response.iter_lines():
+                        if line:
+                            line_str = line.decode('utf-8')
+                            if line_str.startswith('data: '):
+                                data_str = line_str[6:]
+                                if data_str == '[DONE]':
+                                    break
+                                try:
+                                    data = json_module.loads(data_str)
+                                    if 'choices' in data and len(data['choices']) > 0:
+                                        delta = data['choices'][0].get('delta', {})
+                                        
+                                        # 检查是否是工具调用
+                                        if 'tool_calls' in delta:
+                                            in_tool_call = True
+                                            continue
+                                        
+                                        content = delta.get('content', '')
+                                        if content:
+                                            # 检测工具调用开始标记
+                                            if '[TOOL_CALL]' in content or '<|tool_call|>' in content:
+                                                in_tool_call = True
+                                                # 只保留标记之前的内容
+                                            content = content.split('[TOOL_CALL]')[0].split('<|tool_call|>')[0]
+                                            
+                                            if in_tool_call:
+                                                # 检测工具调用结束标记
+                                                if '[/TOOL_CALL]' in content or '<|/tool_call|>' in content:
+                                                    in_tool_call = False
+                                                    # 只保留标记之后的内容
+                                                    content = content.split('[/TOOL_CALL]')[-1].split('<|/tool_call|>')[-1]
+                                                else:
+                                                    # 在工具调用中间，跳过
+                                                    continue
+                                            
+                                            # 过滤掉其他工具调用标记
+                                            content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', content, flags=re.DOTALL)
+                                            content = re.sub(r'minimax:tool_call', '', content)
+                                            content = re.sub(r'<\|tool_call\|>.*?<\|/tool_call\|>', '', content, flags=re.DOTALL)
+                                            
+                                            if content.strip():
+                                                full_content += content
+                                                # 发送 SSE 格式的数据
+                                                yield f"data: {json_module.dumps({'content': content})}\n\n"
+                                except json_module.JSONDecodeError:
+                                    continue
+                    
+                    print(f"[DEBUG] {request_id} - 流式响应完成，总长度: {len(full_content)} 字符")
+                    print(f"[DEBUG] {request_id} - 总耗时: {time.time() - start_time:.2f}秒")
+                    # 发送完成信号
+                    yield f"data: {json_module.dumps({'done': True, 'full_content': full_content})}\n\n"
+                
+                return Response(generate(), mimetype='text/event-stream')
                 
             except requests.exceptions.Timeout as e:
                 print(f"[ERROR] {request_id} - API超时（{timeout_seconds}秒）")
-                return jsonify({
-                    "error": "AI服务响应超时，请稍后重试"
-                }), 504
+                return jsonify({"error": "AI服务响应超时，请稍后重试"}), 504
             except requests.exceptions.HTTPError as e:
                 raise
-
-            result = response.json()
-            print(f"[DEBUG] {request_id} - API响应结构: {list(result.keys())}")
-            
-            if "choices" not in result:
-                print(f"[ERROR] {request_id} - 响应中缺少choices字段")
-                print(f"[ERROR] {request_id} - 完整响应: {str(result)[:500]}")
-                return jsonify({"error": "解析AI响应失败：缺少choices字段"}), 500
-            
-            if not result["choices"]:
-                print(f"[ERROR] {request_id} - choices数组为空")
-                return jsonify({"error": "解析AI响应失败：choices为空"}), 500
-            
-            reply = result["choices"][0]["message"]["content"]
-            print(f"[DEBUG] {request_id} - 回复长度: {len(reply)} 字符")
-            print(f"[DEBUG] {request_id} - 回复预览: {reply[:100]}...")
-            print(f"[DEBUG] {request_id} - 总耗时: {time.time() - start_time:.2f}秒")
-            print(f"{'='*60}\n")
-            
-            return jsonify({"reply": reply})
 
         except requests.exceptions.Timeout:
             elapsed = time.time() - start_time

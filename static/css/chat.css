@@ -206,6 +206,47 @@
   margin-bottom: 0;
 }
 
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4,
+.message-content h5,
+.message-content h6 {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-2);
+  font-weight: var(--font-semibold);
+  color: var(--gray-900);
+  line-height: 1.4;
+}
+
+.message-content h1 {
+  font-size: 1.5em;
+  border-bottom: 2px solid var(--blue-500);
+  padding-bottom: var(--space-2);
+}
+
+.message-content h2 {
+  font-size: 1.3em;
+  border-bottom: 1px solid var(--gray-200);
+  padding-bottom: var(--space-1);
+}
+
+.message-content h3 {
+  font-size: 1.15em;
+  color: var(--blue-700);
+}
+
+.message-content h4 {
+  font-size: 1.05em;
+  color: var(--gray-800);
+}
+
+.message-content h5,
+.message-content h6 {
+  font-size: 1em;
+  color: var(--gray-700);
+}
+
 .message-content code {
   font-family: var(--font-mono);
   font-size: 0.9em;

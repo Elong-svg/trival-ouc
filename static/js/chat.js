@@ -341,6 +341,7 @@ class ChatManager {
       
       const requestStartTime = Date.now();
       
+      // 使用流式响应
       const response = await fetch(this.API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -351,16 +352,14 @@ class ChatManager {
       });
       
       const responseTime = Date.now() - requestStartTime;
-      console.log(`[DEBUG] 响应时间: ${responseTime}ms`);
+      console.log(`[DEBUG] 首字响应时间: ${responseTime}ms`);
       console.log(`[DEBUG] HTTP状态码: ${response.status}`);
-      console.log(`[DEBUG] 响应头:`, Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[ERROR] 请求失败 - 状态码: ${response.status}`);
         console.error(`[ERROR] 错误响应:`, errorText);
         
-        // 根据状态码返回友好的错误提示
         let friendlyMessage = '';
         if (response.status === 504 || response.status === 500) {
           friendlyMessage = '小探正在思考中，可能有点忙～ 请稍等一下再问我哦！😊';
@@ -375,13 +374,63 @@ class ChatManager {
         throw new Error(friendlyMessage);
       }
       
-      const data = await response.json();
-      console.log(`[DEBUG] 响应数据:`, data);
-      console.log(`[DEBUG] 回复长度: ${data.reply ? data.reply.length : 0} 字符`);
+      // 处理流式响应
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
       
-      const aiReply = data.reply;
+      // 创建 AI 消息元素（空内容）
+      const aiMessageEl = this.addMessage('assistant', '');
+      const contentEl = aiMessageEl.querySelector('.message-content');
       
-      await this.typeWriterEffect(aiReply);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6);
+            try {
+              const data = JSON.parse(dataStr);
+              
+              if (data.done) {
+                // 流式响应完成
+                fullContent = data.full_content || fullContent;
+                console.log(`[DEBUG] 流式响应完成，总长度: ${fullContent.length} 字符`);
+              } else if (data.content) {
+                // 接收新内容
+                fullContent += data.content;
+                // 实时更新显示
+                contentEl.innerHTML = renderMarkdown(fullContent);
+                // 滚动到底部
+                this.chatWindow.scrollTop = this.chatWindow.scrollHeight;
+              }
+            } catch (e) {
+              // 忽略解析错误
+            }
+          }
+        }
+      }
+      
+      // 最终渲染
+      contentEl.innerHTML = renderMarkdown(fullContent);
+      this.chatWindow.scrollTop = this.chatWindow.scrollHeight;
+      
+      // 更新消息操作按钮的内容
+      const copyBtn = aiMessageEl.querySelector('.copy-btn');
+      const speakBtn = aiMessageEl.querySelector('.speak-btn');
+      if (copyBtn) copyBtn.dataset.content = this.escapeHtml(fullContent);
+      if (speakBtn) speakBtn.dataset.content = this.escapeHtml(fullContent);
+      
+      // 更新消息数组中的内容
+      if (this.messages.length > 0) {
+        this.messages[this.messages.length - 1].content = fullContent;
+      }
       
       await this.saveCurrentConversation();
       await sidebar.loadHistoryList();
@@ -572,6 +621,8 @@ class ChatManager {
     this.chatWindow.appendChild(messageEl);
     
     this.scrollToBottom();
+    
+    return messageEl;
   }
 
   createMessageElement(role, content) {
