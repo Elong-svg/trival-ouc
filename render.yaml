@@ -7,5 +7,5 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11
-      - key: ALIYUN_API_KEY
+      - key: GLM_API_KEY
         sync: false

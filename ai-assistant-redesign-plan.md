@@ -641,7 +641,7 @@
 |------|------|------|------|-----------|
 | **Web框架** | Flask | 3.0+ | HTTP服务 | 轻量，Python生态，已有代码可复用 |
 | **CORS处理** | flask-cors | 4.0+ | 跨域支持 | Flask官方推荐 |
-| **HTTP客户端** | requests | 2.31+ | 调用阿里云API | Python标准，稳定可靠 |
+| **HTTP客户端** | requests | 2.31+ | 调用智谱 GLM API | Python标准，稳定可靠 |
 | **API网关** | Flask路由 | - | 接口管理 | 简单场景足够，无需FastAPI |
 
 #### 10.1.3 不使用的技术
@@ -984,10 +984,10 @@ export function renderMarkdown(text) {
 ```python
 # 已有接口
 @app.route('/api/chat', methods=['POST'])
-def chat_with_aliyun():
+def chat_with_glm():
     """AI对话接口"""
     # 1. 接收前端messages数组
-    # 2. 转发到阿里云百炼API
+    # 2. 转发到智谱 GLM API
     # 3. 返回AI回复
     
 # 新增接口

@@ -112,10 +112,10 @@ def main():
     
     if not health.get("has_api_key"):
         print("\n⚠ 警告: API Key未配置!")
-        print("请在.env文件中设置ALIYUN_API_KEY")
+        print("请在.env文件中设置GLM_API_KEY")
         print("\n你可以:")
         print("1. 复制.env.example为.env")
-        print("2. 在.env中填入你的阿里云API Key")
+        print("2. 在.env中填入你的智谱 GLM API Key")
         print("3. 重启服务器")
         return
     

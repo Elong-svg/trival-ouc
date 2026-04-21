@@ -43,9 +43,9 @@ def create_app():
     if not api_key_value:
         print("[ERROR] 警告: 未能加载任何 API Key!")
     
-    app.config['ALIYUN_API_KEY'] = api_key_value
-    app.config['ALIYUN_BASE_URL'] = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
-    app.config['ALIYUN_MODEL'] = 'GLM-4-Flash-250414'
+    app.config['API_KEY'] = api_key_value
+    app.config['API_BASE_URL'] = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+    app.config['API_MODEL'] = 'GLM-4-Flash-250414'
 
     # ========== 路由 ==========
 
@@ -65,7 +65,7 @@ def create_app():
         return jsonify({
             "status": "ok",
             "service": "YExplorer AI",
-            "has_api_key": bool(app.config['ALIYUN_API_KEY'])
+            "has_api_key": bool(app.config['API_KEY'])
         })
 
     @app.route('/api/chat', methods=['POST'])
@@ -103,7 +103,7 @@ def create_app():
                 print(f"[ERROR] {request_id} - 消息列表为空")
                 return jsonify({"error": "请输入要提问的内容！"}), 400
 
-            api_key = app.config['ALIYUN_API_KEY']
+            api_key = app.config['API_KEY']
             if not api_key:
                 print(f"[ERROR] {request_id} - API Key未配置")
                 return jsonify({"error": "服务器未配置 API Key"}), 500
@@ -111,11 +111,11 @@ def create_app():
             print(f"[DEBUG] {request_id} - API Key状态: {'已配置' if api_key else '未配置'}")
             print(f"[DEBUG] {request_id} - API Key前缀: {api_key[:10]}...")
             print(f"[DEBUG] {request_id} - 实际请求中的Authorization: Bearer {api_key[:10]}...")
-            print(f"[DEBUG] {request_id} - 目标模型: {app.config['ALIYUN_MODEL']}")
-            print(f"[DEBUG] {request_id} - API地址: {app.config['ALIYUN_BASE_URL']}")
+            print(f"[DEBUG] {request_id} - 目标模型: {app.config['API_MODEL']}")
+            print(f"[DEBUG] {request_id} - API地址: {app.config['API_BASE_URL']}")
 
             payload = {
-                "model": app.config['ALIYUN_MODEL'],
+                "model": app.config['API_MODEL'],
                 "messages": messages,
                 "temperature": 0.7,
                 "max_tokens": 1500,
@@ -125,14 +125,14 @@ def create_app():
             }
             
             print(f"[DEBUG] {request_id} - 请求payload大小: {len(str(payload))} 字符")
-            print(f"[DEBUG] {request_id} - 开始调用阿里云API（流式模式）...")
+            print(f"[DEBUG] {request_id} - 开始调用智谱 GLM API（流式模式）...")
             
             # 流式响应超时设置
             timeout_seconds = 30
             
             try:
                 response = requests.post(
-                    app.config['ALIYUN_BASE_URL'],
+                    app.config['API_BASE_URL'],
                     headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {api_key}"
