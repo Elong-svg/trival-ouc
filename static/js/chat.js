@@ -51,6 +51,16 @@ class ChatManager {
         this.shareMessage(shareBtn);
         return;
       }
+      
+      // 思考内容折叠/展开
+      const thinkingLabel = e.target.closest('.thinking-content-label');
+      if (thinkingLabel) {
+        const thinkingContent = thinkingLabel.closest('.thinking-content');
+        if (thinkingContent) {
+          thinkingContent.classList.toggle('collapsed');
+        }
+        return;
+      }
     });
   }
 
@@ -258,7 +268,21 @@ class ChatManager {
   }
 
   async sendMessage(userText) {
-    if (this.isWaiting || !userText.trim()) return;
+    // 获取上传的图片和文件
+    const app = window.app;
+    const uploadedImages = app ? app.uploadedImages || [] : [];
+    const uploadedFiles = app ? app.uploadedFiles || [] : [];
+    
+    // 检查是否有内容（文本、图片或文件）
+    const hasContent = userText.trim() || uploadedImages.length > 0 || uploadedFiles.length > 0;
+    if (this.isWaiting || !hasContent) return;
+    
+    // 如果只有文件没有文本，自动生成提示
+    let messageText = userText.trim();
+    if (!messageText && uploadedFiles.length > 0) {
+      const fileNames = uploadedFiles.map(f => f.filename).join('、');
+      messageText = `请帮我解读这个文件：${fileNames}`;
+    }
     
     // 检查冷却时间
     const now = Date.now();
@@ -273,7 +297,8 @@ class ChatManager {
     this.lastMessageTime = now;
     this.hideWelcomePage();
     
-    this.addMessage('user', userText);
+    // 添加用户消息（包含图片和文件）
+    this.addMessage('user', messageText, uploadedImages, uploadedFiles);
     
     if (!this.currentConversationId) {
       this.currentConversationId = Date.now().toString();
@@ -326,16 +351,69 @@ class ChatManager {
         enhancedSystemPrompt += `\n\n## 相关知识库参考\n${knowledgeContext}\n\n请基于以上知识库内容，结合你的通用知识，给用户一个详细、生动、符合年龄段的回答。`;
       }
       
+      // 如果有图片，添加视觉理解提示
+      if (uploadedImages.length > 0) {
+        enhancedSystemPrompt += '\n\n## 视觉理解能力\n用户发送了图片，请仔细观察图片内容并进行详细解读。如果图片与海洋、校园、学习相关，请结合海大特色进行讲解。';
+      }
+      
+      // 如果有文件，添加文件解读提示
+      if (uploadedFiles.length > 0) {
+        enhancedSystemPrompt += '\n\n## 文件解读能力\n用户上传了文件，请仔细阅读文件内容并进行专业解读。提取文件的核心要点，用通俗易懂的语言进行总结和分析。';
+      }
+      
       const MAX_MESSAGES = 10;
       const recentMessages = this.messages.slice(-MAX_MESSAGES);
       
+      // 构建最后一条用户消息（包含图片和文件）
+      let lastUserMessage;
+      const contentParts = [];
+      
+      // 添加图片
+      if (uploadedImages.length > 0) {
+        uploadedImages.forEach(img => {
+          contentParts.push({
+            type: 'image_url',
+            image_url: { url: img.base64 }
+          });
+        });
+      }
+      
+      // 添加文件内容
+      if (uploadedFiles.length > 0) {
+        uploadedFiles.forEach(file => {
+          contentParts.push({
+            type: 'text',
+            text: `\n\n--- ${file.filename} (${file.fileType.toUpperCase()}文件内容) ---\n${file.content}\n--- 文件内容结束 ---\n\n`
+          });
+        });
+      }
+      
+      // 添加用户文本
+      if (userText) {
+        contentParts.push({
+          type: 'text',
+          text: userText
+        });
+      }
+      
+      // 构造消息
+      if (contentParts.length === 1 && contentParts[0].type === 'text') {
+        // 如果只有文本，直接使用字符串
+        lastUserMessage = { role: 'user', content: contentParts[0].text };
+      } else {
+        // 多模态消息
+        lastUserMessage = { role: 'user', content: contentParts };
+      }
+      
       const messagesPayload = [
         { role: 'system', content: enhancedSystemPrompt },
-        ...recentMessages
+        ...recentMessages.slice(0, -1), // 除了最后一条
+        lastUserMessage // 添加包含图片的最后一条消息
       ];
       
       console.log(`[DEBUG] 发送消息数量: ${messagesPayload.length} (系统提示 + ${recentMessages.length} 条历史消息)`);
       console.log(`[DEBUG] 系统提示词长度: ${enhancedSystemPrompt.length} 字符`);
+      console.log(`[DEBUG] 图片数量: ${uploadedImages.length}`);
       console.log(`[DEBUG] 请求URL: ${this.API_URL}`);
       console.log(`[DEBUG] 请求体大小: ${JSON.stringify({messages: messagesPayload, age_group: ageGroup}).length} 字符`);
       
@@ -347,7 +425,8 @@ class ChatManager {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messagesPayload,
-          age_group: ageGroup
+          age_group: ageGroup,
+          enable_thinking: window.app.thinkingEnabled !== false // 传递思考开关状态，默认开启
         })
       });
       
@@ -378,8 +457,11 @@ class ChatManager {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let fullReasoning = '';
       let buffer = '';
-      let searchIndicator = null;  // 搜索指示器元素
+      let thinkingIndicator = null;  // 思考指示器元素
+      let thinkingContentEl = null;  // 思考内容显示区域
+      let isThinking = false;
       
       // 创建 AI 消息元素（空内容）
       const aiMessageEl = this.addMessage('assistant', '');
@@ -400,31 +482,48 @@ class ChatManager {
               const data = JSON.parse(dataStr);
               
               if (data.done) {
-                // 流式响应完成，移除搜索指示器
-                this.removeSearchIndicator(searchIndicator);
-                searchIndicator = null;
                 // 流式响应完成
                 fullContent = data.full_content || fullContent;
-                console.log(`[DEBUG] 流式响应完成，总长度: ${fullContent.length} 字符`);
-              } else if (data.searching !== undefined) {
-                // ===== 搜索状态变化 =====
-                if (data.searching) {
-                  // 开始搜索 - 显示搜索指示器
-                  searchIndicator = this.showSearchIndicator(aiMessageEl, data.tool_name || 'web_search');
-                  console.log(`[DEBUG] 联网搜索中... 工具: ${data.tool_name || 'web_search'}`);
+                fullReasoning = data.full_reasoning || fullReasoning;
+                console.log(`[DEBUG] 流式响应完成，回答长度: ${fullContent.length} 字符, 思考长度: ${fullReasoning.length} 字符`);
+              } else if (data.thinking_start) {
+                // ===== 思考阶段开始 =====
+                isThinking = true;
+                thinkingIndicator = this.showThinkingIndicator(aiMessageEl);
+                // 创建思考内容显示区域
+                thinkingContentEl = document.createElement('div');
+                thinkingContentEl.className = 'thinking-content';
+                thinkingContentEl.innerHTML = '<div class="thinking-content-label">💭 思考过程</div><div class="thinking-content-text"></div>';
+                if (thinkingIndicator) {
+                  aiMessageEl.insertBefore(thinkingContentEl, thinkingIndicator.nextSibling);
                 } else {
-                  // 搜索结束 - 移除搜索指示器
-                  this.removeSearchIndicator(searchIndicator);
-                  searchIndicator = null;
-                  console.log(`[DEBUG] 联网搜索完成`);
+                  aiMessageEl.insertBefore(thinkingContentEl, contentEl);
                 }
+                console.log(`[DEBUG] 深度思考中...`);
+              } else if (data.thinking_end) {
+                // ===== 思考阶段结束 =====
+                isThinking = false;
+                this.removeThinkingIndicator(thinkingIndicator);
+                thinkingIndicator = null;
+                // 折叠思考内容
+                if (thinkingContentEl) {
+                  thinkingContentEl.classList.add('collapsed');
+                  thinkingContentEl = null;
+                }
+                console.log(`[DEBUG] 深度思考完成`);
+              } else if (data.reasoning) {
+                // ===== 思考过程内容（流式） =====
+                fullReasoning += data.reasoning;
+                // 实时更新思考内容显示（使用 Markdown 渲染）
+                if (thinkingContentEl) {
+                  const thinkingTextEl = thinkingContentEl.querySelector('.thinking-content-text');
+                  if (thinkingTextEl) {
+                    thinkingTextEl.innerHTML = renderMarkdown(fullReasoning);
+                  }
+                }
+                console.log(`[DEBUG] 思考内容: ${data.reasoning.substring(0, 50)}...`);
               } else if (data.content) {
-                // 收到内容，确保搜索指示器已移除
-                if (searchIndicator) {
-                  this.removeSearchIndicator(searchIndicator);
-                  searchIndicator = null;
-                }
-                // 接收新内容
+                // ===== 回答内容 =====
                 fullContent += data.content;
                 // 实时更新显示
                 contentEl.innerHTML = renderMarkdown(fullContent);
@@ -438,8 +537,8 @@ class ChatManager {
         }
       }
       
-      // 确保搜索指示器被移除
-      this.removeSearchIndicator(searchIndicator);
+      // 确保思考指示器被移除
+      this.removeThinkingIndicator(thinkingIndicator);
       
       // 最终渲染
       contentEl.innerHTML = renderMarkdown(fullContent);
@@ -454,6 +553,7 @@ class ChatManager {
       // 更新消息数组中的内容
       if (this.messages.length > 0) {
         this.messages[this.messages.length - 1].content = fullContent;
+        this.messages[this.messages.length - 1].reasoning = fullReasoning;
       }
       
       await this.saveCurrentConversation();
@@ -638,10 +738,10 @@ class ChatManager {
     });
   }
 
-  addMessage(role, content) {
-    this.messages.push({ role, content });
+  addMessage(role, content, images = [], files = []) {
+    this.messages.push({ role, content, images, files });
     
-    const messageEl = this.createMessageElement(role, content);
+    const messageEl = this.createMessageElement(role, content, images, files);
     this.chatWindow.appendChild(messageEl);
     
     this.scrollToBottom();
@@ -649,11 +749,34 @@ class ChatManager {
     return messageEl;
   }
 
-  createMessageElement(role, content) {
+  createMessageElement(role, content, images = [], files = []) {
     const div = document.createElement('div');
     div.className = `chat-message message-${role}`;
     
     if (role === 'assistant') {
+      // 构建AI消息内容（包含图片和文件）
+      let attachmentsHtml = '';
+      
+      // 添加图片
+      if (images && images.length > 0) {
+        attachmentsHtml += images.map(img => 
+          `<img class="message-image" src="${img.base64}" alt="${this.escapeHtml(img.name)}">`
+        ).join('');
+      }
+      
+      // 添加文件
+      if (files && files.length > 0) {
+        attachmentsHtml += files.map(file => `
+          <div class="message-file">
+            <div class="message-file-icon">${this.getFileIconSVG(file.fileType)}</div>
+            <div class="message-file-info">
+              <div class="message-file-name">${file.filename}</div>
+              <div class="message-file-meta">${file.fileType.toUpperCase()} · ${this.formatFileSize(file.file.size)}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+      
       div.innerHTML = `
         <div class="ai-header">
           <div class="ai-avatar">
@@ -661,6 +784,7 @@ class ChatManager {
           </div>
           <div class="ai-name">小探</div>
         </div>
+        ${attachmentsHtml}
         <div class="message-content">${content ? renderMarkdown(content) : ''}</div>
         <div class="message-actions">
           <button class="action-btn copy-btn" title="复制" data-content="${this.escapeHtml(content)}">
@@ -696,7 +820,31 @@ class ChatManager {
         </div>
       `;
     } else if (role === 'user') {
+      // 构建用户消息内容（包含图片和文件）
+      let attachmentsHtml = '';
+      
+      // 添加图片
+      if (images && images.length > 0) {
+        attachmentsHtml += images.map(img => 
+          `<img class="message-image" src="${img.base64}" alt="${this.escapeHtml(img.name)}">`
+        ).join('');
+      }
+      
+      // 添加文件
+      if (files && files.length > 0) {
+        attachmentsHtml += files.map(file => `
+          <div class="message-file">
+            <div class="message-file-icon">${this.getFileIconSVG(file.fileType)}</div>
+            <div class="message-file-info">
+              <div class="message-file-name">${file.filename}</div>
+              <div class="message-file-type">${file.fileType.toUpperCase()} 文件</div>
+            </div>
+          </div>
+        `).join('');
+      }
+      
       div.innerHTML = `
+        ${attachmentsHtml}
         <div class="message-content">${this.escapeHtml(content)}</div>
         <div class="message-actions">
           <button class="action-btn copy-btn" title="复制" data-content="${this.escapeHtml(content)}">
@@ -717,6 +865,13 @@ class ChatManager {
           </button>
         </div>
       `;
+      
+      // 绑定图片点击放大事件
+      div.querySelectorAll('.message-image').forEach(img => {
+        img.addEventListener('click', () => {
+          this.showImageModal(img.src);
+        });
+      });
     } else {
       div.innerHTML = `<div class="message-content">${content}</div>`;
     }
@@ -730,19 +885,19 @@ class ChatManager {
     return div.innerHTML;
   }
 
-  // ===== 联网搜索指示器 =====
-  showSearchIndicator(aiMessageEl, toolName) {
-    // 移除已有的搜索指示器
-    const existing = aiMessageEl.querySelector('.search-indicator');
+  // ===== 深度思考指示器 =====
+  showThinkingIndicator(aiMessageEl) {
+    // 移除已有的思考指示器
+    const existing = aiMessageEl.querySelector('.thinking-indicator');
     if (existing) existing.remove();
     
-    // 创建搜索指示器
+    // 创建思考指示器
     const indicator = document.createElement('div');
-    indicator.className = 'search-indicator';
+    indicator.className = 'thinking-indicator';
     indicator.innerHTML = `
-      <div class="search-indicator-inner">
-        <div class="search-spinner"></div>
-        <span class="search-text">正在联网搜索最新信息...</span>
+      <div class="thinking-indicator-inner">
+        <div class="thinking-spinner"></div>
+        <span class="thinking-text">小探正在深度思考中...</span>
       </div>
     `;
     
@@ -760,7 +915,7 @@ class ChatManager {
     return indicator;
   }
   
-  removeSearchIndicator(indicator) {
+  removeThinkingIndicator(indicator) {
     if (indicator && indicator.parentNode) {
       // 添加淡出动画
       indicator.classList.add('fade-out');
@@ -805,7 +960,7 @@ class ChatManager {
     this.hideWelcomePage();
     
     messages.forEach(msg => {
-      const messageEl = this.createMessageElement(msg.role, msg.content);
+      const messageEl = this.createMessageElement(msg.role, msg.content, msg.images || [], msg.files || []);
       this.chatWindow.appendChild(messageEl);
     });
     
@@ -837,6 +992,56 @@ class ChatManager {
     };
     
     return ageMap[text] || 'high_school';
+  }
+
+  getFileIconSVG(fileType) {
+    const icons = {
+      pdf: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="44">
+              <rect x="4" y="2" width="16" height="20" rx="2" fill="#FF4B4B"/>
+              <path d="M8 8h8M8 12h8M8 16h5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>`,
+      docx: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="44">
+              <rect x="4" y="2" width="16" height="20" rx="2" fill="#4B89FF"/>
+              <path d="M8 8h8M8 12h8M8 16h5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>`,
+      txt: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="44">
+              <rect x="4" y="2" width="16" height="20" rx="2" fill="#8C8C8C"/>
+              <path d="M8 8h8M8 12h8M8 16h5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>`,
+      md: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="44">
+              <rect x="4" y="2" width="16" height="20" rx="2" fill="#8C8C8C"/>
+              <path d="M8 8h8M8 12h8M8 16h5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>`
+    };
+    return icons[fileType] || icons.txt;
+  }
+
+  formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 KB';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(0)) + ' ' + sizes[i];
+  }
+
+  showImageModal(src) {
+    const modal = document.createElement('div');
+    modal.className = 'image-modal';
+    modal.innerHTML = `
+      <div class="image-modal-backdrop"></div>
+      <div class="image-modal-content">
+        <img src="${src}" alt="预览图片">
+        <button class="image-modal-close">×</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+    modal.querySelector('.image-modal-backdrop').addEventListener('click', close);
+    modal.querySelector('.image-modal-close').addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
   }
 }
 

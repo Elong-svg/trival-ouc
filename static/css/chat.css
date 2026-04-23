@@ -379,6 +379,145 @@
   }
 }
 
+/* ===== 消息中的图片 ===== */
+.message-image {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.message-image:hover {
+  transform: scale(1.02);
+}
+
+/* ===== 消息中的文件 ===== */
+.message-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  border: none;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  max-width: 240px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.message-file-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-file-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.message-file-name {
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+  display: block;
+  width: 100%;
+}
+
+.message-file-meta {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+/* 用户消息中的文件样式（深色背景） */
+.message-user .message-file {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+  max-width: 240px;
+}
+
+.message-user .message-file-name {
+  color: #ffffff;
+}
+
+.message-user .message-file-meta {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ===== 图片预览模态框 ===== */
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.image-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  z-index: 1;
+}
+
+.image-modal-content img {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.image-modal-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.image-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 @keyframes error-float {
   0%, 100% {
     transform: translateY(0);
@@ -397,67 +536,145 @@
   }
 }
 
-/* ===== 联网搜索指示器 ===== */
-.search-indicator {
+/* ===== 深度思考指示器 ===== */
+.thinking-indicator {
   padding: 8px 12px;
   margin-bottom: 8px;
-  animation: searchFadeIn 0.3s ease;
+  animation: thinkingFadeIn 0.3s ease;
 }
 
-.search-indicator.fade-out {
-  animation: searchFadeOut 0.3s ease forwards;
+.thinking-indicator.fade-out {
+  animation: thinkingFadeOut 0.3s ease forwards;
 }
 
-.search-indicator-inner {
+.thinking-indicator-inner {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 100%);
-  border: 1px solid #b3d9ff;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 100%);
+  border: 1px solid #90caf9;
   border-radius: 12px;
   font-size: 14px;
-  color: #1a73e8;
+  color: #1976d2;
 }
 
-.search-spinner {
+.thinking-spinner {
   width: 18px;
   height: 18px;
-  border: 2.5px solid #b3d9ff;
-  border-top-color: #1a73e8;
+  border: 2.5px solid #90caf9;
+  border-top-color: #1976d2;
   border-radius: 50%;
-  animation: searchSpin 0.8s linear infinite;
+  animation: thinkingSpin 0.8s linear infinite;
   flex-shrink: 0;
 }
 
-.search-text {
+.thinking-text {
   font-weight: 500;
   letter-spacing: 0.3px;
 }
 
-@keyframes searchSpin {
+@keyframes thinkingSpin {
   to { transform: rotate(360deg); }
 }
 
-@keyframes searchFadeIn {
+@keyframes thinkingFadeIn {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes searchFadeOut {
+@keyframes thinkingFadeOut {
   from { opacity: 1; transform: translateY(0); }
   to { opacity: 0; transform: translateY(-8px); }
 }
 
-/* 搜索指示器在深色模式下的适配 */
+/* 思考指示器在深色模式下的适配 */
 @media (prefers-color-scheme: dark) {
-  .search-indicator-inner {
+  .thinking-indicator-inner {
     background: linear-gradient(135deg, #1a2a3a 0%, #1e2d3d 100%);
     border-color: #2a4a6a;
     color: #6bb3ff;
   }
-  .search-spinner {
+  .thinking-spinner {
     border-color: #2a4a6a;
     border-top-color: #6bb3ff;
+  }
+}
+
+/* ===== 思考内容展示区域 ===== */
+.thinking-content {
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #f5f9ff 0%, #e8f4fd 100%);
+  border: 1px solid #b3d9ff;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.thinking-content-label {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  color: var(--blue-600);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid #b3d9ff;
+}
+
+.thinking-content-label:hover {
+  background: linear-gradient(135deg, #d6e9ff 0%, #aed8f8 100%);
+}
+
+.thinking-content-text {
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--gray-700);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
+}
+
+/* 折叠状态 */
+.thinking-content.collapsed .thinking-content-text {
+  max-height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.thinking-content.collapsed .thinking-content-label::after {
+  content: '展开';
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.thinking-content:not(.collapsed) .thinking-content-label::after {
+  content: '收起';
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  .thinking-content {
+    background: linear-gradient(135deg, #1a2a3a 0%, #1e2d3d 100%);
+    border-color: #2a4a6a;
+  }
+  .thinking-content-label {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1e2d3d 100%);
+    color: #6bb3ff;
+    border-bottom-color: #2a4a6a;
+  }
+  .thinking-content-text {
+    color: #a0b4c8;
   }
 }

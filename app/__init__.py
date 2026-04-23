@@ -6,7 +6,9 @@ from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 import requests
 import os
+import uuid
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
 
 # 加载.env文件
 load_dotenv()
@@ -16,9 +18,19 @@ def create_app():
     # 使用绝对路径确保 Render 上能找到 static 文件
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     static_dir = os.path.join(base_dir, 'static')
+    upload_dir = os.path.join(base_dir, 'uploads')
+    
+    # 创建上传目录
+    os.makedirs(upload_dir, exist_ok=True)
+    
     app = Flask(__name__, static_folder=static_dir, static_url_path='')
     CORS(app)
-
+    
+    # 文件上传配置
+    app.config['UPLOAD_FOLDER'] = upload_dir
+    app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB
+    app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'docx', 'txt', 'md'}
+    
     # 智谱 GLM 配置 - 优先从 api_key.py 读取，其次从环境变量读取
     api_key_value = None
     
@@ -45,7 +57,51 @@ def create_app():
     
     app.config['API_KEY'] = api_key_value
     app.config['API_BASE_URL'] = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
-    app.config['API_MODEL'] = 'GLM-4-Flash-250414'
+    # GLM-4.1V-Thinking-Flash 支持深度思考（thinking）功能
+    app.config['API_MODEL'] = 'glm-4.1v-thinking-flash'
+
+    # ========== 工具函数 ==========
+    
+    def allowed_file(filename):
+        """检查文件扩展名是否允许"""
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    
+    def extract_text_from_file(file_path, file_type):
+        """从文件中提取文本内容"""
+        import tempfile
+        
+        try:
+            if file_type == 'txt' or file_type == 'md':
+                # TXT/Markdown 文件直接读取
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            
+            elif file_type == 'pdf':
+                # PDF 文件使用 pdfplumber 解析
+                import pdfplumber
+                text_parts = []
+                with pdfplumber.open(file_path) as pdf:
+                    for page in pdf.pages:
+                        page_text = page.extract_text()
+                        if page_text:
+                            text_parts.append(page_text)
+                return '\n\n'.join(text_parts)
+            
+            elif file_type == 'docx':
+                # Word 文件使用 python-docx 解析
+                from docx import Document
+                doc = Document(file_path)
+                text_parts = []
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        text_parts.append(para.text)
+                return '\n\n'.join(text_parts)
+            
+            return ''
+        
+        except Exception as e:
+            print(f"[ERROR] 文件解析失败: {e}")
+            raise
 
     # ========== 路由 ==========
 
@@ -65,12 +121,68 @@ def create_app():
         return jsonify({
             "status": "ok",
             "service": "YExplorer AI",
-            "has_api_key": bool(app.config['API_KEY'])
+            "has_api_key": bool(app.config['API_KEY']),
+            "model": app.config['API_MODEL']
         })
+
+    @app.route('/api/upload', methods=['POST'])
+    def upload_file():
+        """文件上传接口"""
+        try:
+            if 'file' not in request.files:
+                return jsonify({"error": "没有上传文件"}), 400
+            
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({"error": "未选择文件"}), 400
+            
+            # 先获取文件扩展名（从原始文件名）
+            if '.' not in file.filename:
+                return jsonify({"error": "文件必须包含扩展名"}), 400
+            
+            file_ext = file.filename.rsplit('.', 1)[1].lower()
+            
+            # 保存原始文件名（保留中文）
+            original_filename = file.filename
+            
+            if not allowed_file(file.filename):
+                return jsonify({"error": "不支持的文件类型，仅支持 PDF、Word、TXT、MD 文件"}), 400
+            
+            # 生成安全的唯一文件名（用于存储）
+            unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            
+            # 保存文件
+            file.save(file_path)
+            
+            # 提取文本内容
+            file_text = extract_text_from_file(file_path, file_ext)
+            
+            # 限制文本长度
+            MAX_TEXT_LENGTH = 10000
+            if len(file_text) > MAX_TEXT_LENGTH:
+                file_text = file_text[:MAX_TEXT_LENGTH] + '\n\n...（文件内容过长，已截断）'
+            
+            # 清理临时文件
+            os.unlink(file_path)
+            
+            return jsonify({
+                "success": True,
+                "filename": original_filename,
+                "file_type": file_ext,
+                "content": file_text,
+                "length": len(file_text)
+            })
+        
+        except Exception as e:
+            print(f"[ERROR] 文件上传失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": f"文件处理失败：{str(e)}"}), 500
 
     @app.route('/api/chat', methods=['POST'])
     def chat():
-        """AI 聊天接口"""
+        """AI 聊天接口 - 支持深度思考（Thinking）模式"""
         import time
         import traceback
         
@@ -89,9 +201,11 @@ def create_app():
             data = request.get_json()
             messages = data.get("messages", [])
             age_group = data.get("age_group", "unknown")
+            enable_thinking = data.get("enable_thinking", True)  # 从前端获取思考开关状态，默认开启
             
             print(f"[DEBUG] {request_id} - 消息数量: {len(messages)}")
             print(f"[DEBUG] {request_id} - 年龄段: {age_group}")
+            print(f"[DEBUG] {request_id} - 深度思考: {enable_thinking}")
             
             if messages:
                 last_msg = messages[-1]
@@ -110,25 +224,37 @@ def create_app():
             
             print(f"[DEBUG] {request_id} - API Key状态: {'已配置' if api_key else '未配置'}")
             print(f"[DEBUG] {request_id} - API Key前缀: {api_key[:10]}...")
-            print(f"[DEBUG] {request_id} - 实际请求中的Authorization: Bearer {api_key[:10]}...")
             print(f"[DEBUG] {request_id} - 目标模型: {app.config['API_MODEL']}")
             print(f"[DEBUG] {request_id} - API地址: {app.config['API_BASE_URL']}")
 
+            # 构建请求 payload
             payload = {
                 "model": app.config['API_MODEL'],
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 1500,
+                "max_tokens": 3000,
                 "top_p": 0.8,
-                "enable_search": True,
                 "stream": True  # 启用流式响应
             }
+            
+            # 启用/禁用深度思考模式（Thinking Mode）
+            # GLM-4.1V-Thinking 模型需要显式设置 thinking 参数，否则会默认启用
+            if enable_thinking:
+                payload["thinking"] = {
+                    "type": "enabled"
+                }
+                print(f"[DEBUG] {request_id} - 已启用深度思考模式")
+            else:
+                payload["thinking"] = {
+                    "type": "disabled"
+                }
+                print(f"[DEBUG] {request_id} - 深度思考已关闭（显式禁用）")
             
             print(f"[DEBUG] {request_id} - 请求payload大小: {len(str(payload))} 字符")
             print(f"[DEBUG] {request_id} - 开始调用智谱 GLM API（流式模式）...")
             
             # 流式响应超时设置
-            timeout_seconds = 30
+            timeout_seconds = 60  # 思考模式可能需要更长时间
             
             try:
                 response = requests.post(
@@ -154,11 +280,13 @@ def create_app():
                 # 流式响应生成器
                 def generate():
                     import json as json_module
-                    import re
                     full_content = ""
-                    in_tool_call = False
-                    tool_call_buffer = ""
-                    search_status_sent = False  # 是否已发送搜索状态
+                    full_reasoning = ""
+                    thinking_phase = True
+                    thinking_start_sent = False
+                    thinking_end_sent = False
+                    # 检查是否启用了思考模式
+                    is_thinking_enabled = payload.get("thinking", {}).get("type") == "enabled"
                     
                     for line in response.iter_lines():
                         if line:
@@ -166,91 +294,57 @@ def create_app():
                             if line_str.startswith('data: '):
                                 data_str = line_str[6:]
                                 if data_str == '[DONE]':
-                                    # 如果搜索状态还在显示，发送搜索结束信号
-                                    if search_status_sent:
-                                        yield f"data: {json_module.dumps({'searching': False})}\n\n"
+                                    # 如果思考阶段还没结束，发送结束信号
+                                    if is_thinking_enabled and not thinking_end_sent:
+                                        yield f"data: {json_module.dumps({'thinking_end': True})}\n\n"
                                     break
                                 try:
                                     data = json_module.loads(data_str)
                                     if 'choices' in data and len(data['choices']) > 0:
                                         delta = data['choices'][0].get('delta', {})
                                         
-                                        # ===== 检测搜索/工具调用状态 =====
-                                        # 方式1：检测 tool_calls 字段（智谱标准工具调用）
-                                        if 'tool_calls' in delta:
-                                            # 判断是否是搜索类型的工具调用
-                                            tool_name = ''
-                                            for tc in delta.get('tool_calls', []):
-                                                func = tc.get('function', {})
-                                                tool_name = func.get('name', '')
-                                                # 智谱的联网搜索工具名通常包含 search/web
-                                                break
+                                        # ===== 处理思考过程（reasoning_content） =====
+                                        # 只有在思考模式启用时才处理
+                                        reasoning_content = delta.get('reasoning_content', '')
+                                        if reasoning_content and is_thinking_enabled:
+                                            full_reasoning += reasoning_content
                                             
-                                            if not search_status_sent:
-                                                search_status_sent = True
-                                                # 推送搜索开始状态
-                                                yield f"data: {json_module.dumps({'searching': True, 'tool_name': tool_name or 'web_search'})}\n\n"
-                                            in_tool_call = True
+                                            # 如果是第一次收到思考内容，发送思考开始信号
+                                            if not thinking_start_sent:
+                                                thinking_start_sent = True
+                                                thinking_phase = True
+                                                print(f"[DEBUG] {request_id} - 思考阶段开始")
+                                                yield f"data: {json_module.dumps({'thinking_start': True})}\n\n"
+                                            
+                                            # 流式推送思考内容
+                                            yield f"data: {json_module.dumps({'reasoning': reasoning_content})}\n\n"
+                                            continue
+                                        elif reasoning_content and not is_thinking_enabled:
+                                            # 思考模式关闭，跳过思考内容
                                             continue
                                         
+                                        # ===== 处理回答内容 =====
                                         content = delta.get('content', '')
                                         if content:
-                                            # 方式2：检测文本中的搜索标记
-                                            # 智谱搜索结果有时会以特定前缀返回
-                                            search_prefixes = ['[搜索', '[Search', '```search', 'web_search']
-                                            for prefix in search_prefixes:
-                                                if prefix in content and not search_status_sent:
-                                                    search_status_sent = True
-                                                    yield f"data: {json_module.dumps({'searching': True, 'tool_name': 'web_search'})}\n\n"
-                                                    break
+                                            # 如果之前处于思考阶段，现在收到实际内容，说明思考结束
+                                            if is_thinking_enabled and thinking_phase and not thinking_end_sent:
+                                                thinking_phase = False
+                                                thinking_end_sent = True
+                                                print(f"[DEBUG] {request_id} - 思考阶段结束，开始输出回答")
+                                                yield f"data: {json_module.dumps({'thinking_end': True})}\n\n"
                                             
-                                            # 检测工具调用开始标记
-                                            if '[TOOL_CALL]' in content or '<|tool_call|>' in content:
-                                                if not search_status_sent:
-                                                    search_status_sent = True
-                                                    yield f"data: {json_module.dumps({'searching': True, 'tool_name': 'tool_call'})}\n\n"
-                                                in_tool_call = True
-                                            
-                                            content = content.split('[TOOL_CALL]')[0].split('<|tool_call|>')[0]
-                                            
-                                            if in_tool_call:
-                                                # 检测工具调用结束标记
-                                                if '[/TOOL_CALL]' in content or '<|/tool_call|>' in content:
-                                                    in_tool_call = False
-                                                    # 搜索结束
-                                                    if search_status_sent:
-                                                        search_status_sent = False
-                                                        yield f"data: {json_module.dumps({'searching': False})}\n\n"
-                                                    content = content.split('[/TOOL_CALL]')[-1].split('<|/tool_call|>')[-1]
-                                                else:
-                                                    # 在工具调用中间，跳过
-                                                    continue
-                                            
-                                            # 过滤掉其他工具调用标记
-                                            content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', content, flags=re.DOTALL)
-                                            content = re.sub(r'minimax:tool_call', '', content)
-                                            content = re.sub(r'<\|tool_call\|>.*?<\|/tool_call\|>', '', content, flags=re.DOTALL)
-                                            
-                                            # 过滤搜索结果引用标记（智谱格式）
-                                            content = re.sub(r'\[搜索结果\d*\]', '', content)
-                                            content = re.sub(r'```search.*?```', '', content, flags=re.DOTALL)
-                                            
-                                            if content.strip():
-                                                # 收到实际内容，搜索状态结束
-                                                if search_status_sent:
-                                                    search_status_sent = False
-                                                    yield f"data: {json_module.dumps({'searching': False})}\n\n"
-                                                    
-                                                full_content += content
-                                                # 发送 SSE 格式的数据
-                                                yield f"data: {json_module.dumps({'content': content})}\n\n"
+                                            full_content += content
+                                            # 发送 SSE 格式的数据
+                                            yield f"data: {json_module.dumps({'content': content})}\n\n"
                                 except json_module.JSONDecodeError:
                                     continue
                     
-                    print(f"[DEBUG] {request_id} - 流式响应完成，总长度: {len(full_content)} 字符")
+                    print(f"[DEBUG] {request_id} - 流式响应完成")
+                    print(f"[DEBUG] {request_id} - 回答总长度: {len(full_content)} 字符")
+                    print(f"[DEBUG] {request_id} - 思考总长度: {len(full_reasoning)} 字符")
                     print(f"[DEBUG] {request_id} - 总耗时: {time.time() - start_time:.2f}秒")
                     # 发送完成信号
-                    yield f"data: {json_module.dumps({'done': True, 'full_content': full_content})}\n\n"
+                    yield f"data: {json_module.dumps({'done': True, 'full_content': full_content, 'full_reasoning': full_reasoning})}\n\n"
                 
                 return Response(generate(), mimetype='text/event-stream')
                 

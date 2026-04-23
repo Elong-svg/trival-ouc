@@ -8,6 +8,9 @@ class App {
     this.sendBtn = document.getElementById('send-btn');
     this.welcomePage = document.getElementById('welcome-page');
     this.selectedSubjects = [];
+    this.thinkingEnabled = false; // 思考开关状态，默认关闭
+    this.uploadedImages = []; // 已上传的图片数组
+    this.uploadedFiles = []; // 已上传的文件数组
   }
 
   async init() {
@@ -68,6 +71,8 @@ class App {
     this.initVideoModal();
     this.initVoiceInput();
     this.initSubjectSelector();
+    this.initThinkingToggle();
+    this.initImageUpload();
   }
 
   initSubjectSelector() {
@@ -153,6 +158,346 @@ class App {
         }
       });
     }
+  }
+
+  initThinkingToggle() {
+    const thinkingBtn = document.getElementById('thinking-toggle-btn');
+    if (!thinkingBtn) return;
+
+    thinkingBtn.addEventListener('click', () => {
+      this.thinkingEnabled = !this.thinkingEnabled;
+      thinkingBtn.classList.toggle('active', this.thinkingEnabled);
+      console.log(`[DEBUG] 深度思考: ${this.thinkingEnabled ? '已开启' : '已关闭'}`);
+    });
+  }
+
+  initImageUpload() {
+    const moreBtn = document.getElementById('more-btn');
+    const moreMenu = document.getElementById('more-menu');
+    const menuImage = document.getElementById('more-menu-image');
+    const menuFile = document.getElementById('more-menu-file');
+    const imageInput = document.getElementById('image-input');
+    const fileInput = document.getElementById('file-input');
+    
+    if (!moreBtn || !moreMenu) return;
+
+    // 点击更多按钮显示/隐藏菜单
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moreMenu.classList.toggle('show');
+    });
+
+    // 点击其他地方关闭菜单
+    document.addEventListener('click', () => {
+      moreMenu.classList.remove('show');
+    });
+
+    // 点击图片选项
+    if (menuImage && imageInput) {
+      menuImage.addEventListener('click', () => {
+        moreMenu.classList.remove('show');
+        imageInput.click();
+      });
+    }
+
+    // 点击文件选项
+    if (menuFile && fileInput) {
+      menuFile.addEventListener('click', () => {
+        moreMenu.classList.remove('show');
+        fileInput.click();
+      });
+    }
+
+    // 监听图片文件选择
+    if (imageInput) {
+      imageInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        this.handleImageFiles(files);
+        imageInput.value = '';
+      });
+    }
+
+    // 监听文档文件选择
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        this.handleFileUpload(files);
+        fileInput.value = '';
+      });
+    }
+
+    // 支持拖拽上传
+    const inputWrapper = document.querySelector('.input-wrapper');
+    if (inputWrapper) {
+      inputWrapper.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        inputWrapper.style.outline = '2px dashed var(--blue-500)';
+      });
+
+      inputWrapper.addEventListener('dragleave', () => {
+        inputWrapper.style.outline = '';
+      });
+
+      inputWrapper.addEventListener('drop', (e) => {
+        e.preventDefault();
+        inputWrapper.style.outline = '';
+        const files = Array.from(e.dataTransfer.files);
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        const docFiles = files.filter(f => 
+          ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'].includes(f.type) ||
+          ['.pdf', '.docx', '.txt', '.md'].some(ext => f.name.toLowerCase().endsWith(ext))
+        );
+        
+        if (imageFiles.length > 0) this.handleImageFiles(imageFiles);
+        if (docFiles.length > 0) this.handleFileUpload(docFiles);
+      });
+    }
+  }
+
+  async handleFileUpload(files) {
+    for (const file of files) {
+      if (this.uploadedFiles.length >= 3) {
+        chat.showToast('最多上传 3 个文件');
+        break;
+      }
+
+      // 验证文件类型
+      const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
+      const allowedExts = ['.pdf', '.docx', '.txt', '.md'];
+      const isValidType = allowedTypes.includes(file.type) || allowedExts.some(ext => file.name.toLowerCase().endsWith(ext));
+      
+      if (!isValidType) {
+        chat.showToast('仅支持 PDF、Word、TXT、MD 文件');
+        continue;
+      }
+
+      if (file.size > 20 * 1024 * 1024) {
+        chat.showToast('文件大小不能超过 20MB');
+        continue;
+      }
+
+      try {
+        chat.showToast('正在解析文件...');
+        
+        // 上传文件到后端
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || '文件处理失败');
+        }
+        
+        const fileData = {
+          file: file,
+          filename: result.filename,
+          fileType: result.file_type,
+          content: result.content,
+          length: result.length
+        };
+        
+        this.uploadedFiles.push(fileData);
+        this.renderAttachments();
+        chat.showToast('文件解析成功！');
+        
+      } catch (error) {
+        console.error('文件上传失败:', error);
+        chat.showToast(error.message || '文件上传失败');
+      }
+    }
+  }
+
+  async handleImageFiles(files) {
+    for (const file of files) {
+      if (this.uploadedImages.length >= 5) {
+        chat.showToast('最多上传 5 张图片');
+        break;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        chat.showToast('请上传图片文件');
+        continue;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        chat.showToast('图片大小不能超过 10MB');
+        continue;
+      }
+
+      try {
+        const base64 = await this.fileToBase64(file);
+        const imageData = {
+          file: file,
+          base64: base64,
+          name: file.name
+        };
+        this.uploadedImages.push(imageData);
+        this.renderAttachments();
+      } catch (error) {
+        console.error('图片处理失败:', error);
+        chat.showToast('图片处理失败');
+      }
+    }
+  }
+
+  fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  renderAttachments() {
+    const container = document.getElementById('attachment-area');
+    if (!container) return;
+
+    let html = '';
+    
+    // 渲染图片附件
+    this.uploadedImages.forEach((img, index) => {
+      html += `
+        <div class="attachment-item" data-type="image" data-index="${index}">
+          <div class="attachment-image-wrapper">
+            <img src="${img.base64}" alt="${img.name}">
+            <button class="attachment-remove" data-type="image" data-index="${index}" title="移除图片">×</button>
+          </div>
+          <div class="attachment-action" data-action="explain" data-type="image" data-index="${index}">
+            <span>解释图片</span>
+            <svg viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      `;
+    });
+    
+    // 渲染文件附件
+    this.uploadedFiles.forEach((file, index) => {
+      const icon = this.getFileIcon(file.fileType);
+      html += `
+        <div class="attachment-item" data-type="file" data-index="${index}">
+          <div class="attachment-file-wrapper">
+            <div class="attachment-file-icon">
+              ${icon}
+            </div>
+            <div class="attachment-file-info">
+              <div class="attachment-file-name">${file.filename}</div>
+              <div class="attachment-file-size">${this.formatFileSize(file.file.size)}</div>
+            </div>
+          </div>
+          <div class="attachment-action" data-action="read" data-type="file" data-index="${index}">
+            <span>阅读文件</span>
+            <svg viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <button class="attachment-remove" data-type="file" data-index="${index}" title="移除文件">×</button>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    // 绑定移除事件
+    container.querySelectorAll('.attachment-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const type = btn.dataset.type;
+        const index = parseInt(btn.dataset.index);
+        if (type === 'image') {
+          this.removeImage(index);
+        } else {
+          this.removeFile(index);
+        }
+      });
+    });
+
+    // 绑定解释图片按钮
+    container.querySelectorAll('.attachment-action[data-action="explain"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.dataset.index);
+        const img = this.uploadedImages[index];
+        if (img) {
+          this.userInput.value = `请帮我解释这张图片：${img.name}`;
+          this.autoResizeTextarea();
+          this.updateSendButtonState();
+        }
+      });
+    });
+
+    // 绑定阅读文件按钮
+    container.querySelectorAll('.attachment-action[data-action="read"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.dataset.index);
+        const file = this.uploadedFiles[index];
+        if (file) {
+          this.userInput.value = `请帮我阅读并解读这个${file.fileType.toUpperCase()}文件：${file.filename}`;
+          this.autoResizeTextarea();
+          this.updateSendButtonState();
+        }
+      });
+    });
+
+    // 更新发送按钮状态
+    this.updateSendButtonState();
+  }
+
+  getFileIcon(fileType) {
+    const icons = {
+      pdf: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#EF4444" stroke-width="2"/>
+              <path d="M14 2v6h6M8 13h8M8 17h8" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+            </svg>`,
+      docx: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#3B82F6" stroke-width="2"/>
+              <path d="M14 2v6h6M8 13h8M8 17h8" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+            </svg>`,
+      txt: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#6B7280" stroke-width="2"/>
+              <path d="M14 2v6h6M8 13h8M8 17h8" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/>
+            </svg>`,
+      md: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#6B7280" stroke-width="2"/>
+              <path d="M14 2v6h6M8 13h8M8 17h8" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/>
+            </svg>`
+    };
+    return icons[fileType] || icons.txt;
+  }
+
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  removeFile(index) {
+    this.uploadedFiles.splice(index, 1);
+    this.renderAttachments();
+  }
+
+  clearFiles() {
+    this.uploadedFiles = [];
+    this.renderAttachments();
+  }
+
+  removeImage(index) {
+    this.uploadedImages.splice(index, 1);
+    this.renderAttachments();
+  }
+
+  clearImages() {
+    this.uploadedImages = [];
+    this.renderAttachments();
   }
 
   updateSubjectUI() {
@@ -373,9 +718,11 @@ class App {
 
   handleSend() {
     const text = this.userInput.value.trim();
-    if (text && !chat.isWaiting) {
+    if ((text || this.uploadedImages.length > 0 || this.uploadedFiles.length > 0) && !chat.isWaiting) {
       chat.sendMessage(text);
       this.userInput.value = '';
+      this.clearImages(); // 发送后清除图片
+      this.clearFiles(); // 发送后清除文件
       this.autoResizeTextarea();
       this.updateSendButtonState();
     }
@@ -388,6 +735,9 @@ class App {
 
   updateSendButtonState() {
     const hasText = this.userInput.value.trim().length > 0;
+    const hasImages = this.uploadedImages.length > 0;
+    const hasFiles = this.uploadedFiles.length > 0;
+    const hasContent = hasText || hasImages || hasFiles;
     
     if (chat.isWaiting) {
       this.sendBtn.className = 'send-btn loading';
@@ -397,7 +747,7 @@ class App {
           <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="12 12"/>
         </svg>
       `;
-    } else if (hasText) {
+    } else if (hasContent) {
       this.sendBtn.className = 'send-btn active';
       this.sendBtn.disabled = false;
       this.sendBtn.innerHTML = `
