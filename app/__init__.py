@@ -158,6 +158,7 @@ def create_app():
                     full_content = ""
                     in_tool_call = False
                     tool_call_buffer = ""
+                    search_status_sent = False  # 是否已发送搜索状态
                     
                     for line in response.iter_lines():
                         if line:
@@ -165,30 +166,61 @@ def create_app():
                             if line_str.startswith('data: '):
                                 data_str = line_str[6:]
                                 if data_str == '[DONE]':
+                                    # 如果搜索状态还在显示，发送搜索结束信号
+                                    if search_status_sent:
+                                        yield f"data: {json_module.dumps({'searching': False})}\n\n"
                                     break
                                 try:
                                     data = json_module.loads(data_str)
                                     if 'choices' in data and len(data['choices']) > 0:
                                         delta = data['choices'][0].get('delta', {})
                                         
-                                        # 检查是否是工具调用
+                                        # ===== 检测搜索/工具调用状态 =====
+                                        # 方式1：检测 tool_calls 字段（智谱标准工具调用）
                                         if 'tool_calls' in delta:
+                                            # 判断是否是搜索类型的工具调用
+                                            tool_name = ''
+                                            for tc in delta.get('tool_calls', []):
+                                                func = tc.get('function', {})
+                                                tool_name = func.get('name', '')
+                                                # 智谱的联网搜索工具名通常包含 search/web
+                                                break
+                                            
+                                            if not search_status_sent:
+                                                search_status_sent = True
+                                                # 推送搜索开始状态
+                                                yield f"data: {json_module.dumps({'searching': True, 'tool_name': tool_name or 'web_search'})}\n\n"
                                             in_tool_call = True
                                             continue
                                         
                                         content = delta.get('content', '')
                                         if content:
+                                            # 方式2：检测文本中的搜索标记
+                                            # 智谱搜索结果有时会以特定前缀返回
+                                            search_prefixes = ['[搜索', '[Search', '```search', 'web_search']
+                                            for prefix in search_prefixes:
+                                                if prefix in content and not search_status_sent:
+                                                    search_status_sent = True
+                                                    yield f"data: {json_module.dumps({'searching': True, 'tool_name': 'web_search'})}\n\n"
+                                                    break
+                                            
                                             # 检测工具调用开始标记
                                             if '[TOOL_CALL]' in content or '<|tool_call|>' in content:
+                                                if not search_status_sent:
+                                                    search_status_sent = True
+                                                    yield f"data: {json_module.dumps({'searching': True, 'tool_name': 'tool_call'})}\n\n"
                                                 in_tool_call = True
-                                                # 只保留标记之前的内容
+                                            
                                             content = content.split('[TOOL_CALL]')[0].split('<|tool_call|>')[0]
                                             
                                             if in_tool_call:
                                                 # 检测工具调用结束标记
                                                 if '[/TOOL_CALL]' in content or '<|/tool_call|>' in content:
                                                     in_tool_call = False
-                                                    # 只保留标记之后的内容
+                                                    # 搜索结束
+                                                    if search_status_sent:
+                                                        search_status_sent = False
+                                                        yield f"data: {json_module.dumps({'searching': False})}\n\n"
                                                     content = content.split('[/TOOL_CALL]')[-1].split('<|/tool_call|>')[-1]
                                                 else:
                                                     # 在工具调用中间，跳过
@@ -199,7 +231,16 @@ def create_app():
                                             content = re.sub(r'minimax:tool_call', '', content)
                                             content = re.sub(r'<\|tool_call\|>.*?<\|/tool_call\|>', '', content, flags=re.DOTALL)
                                             
+                                            # 过滤搜索结果引用标记（智谱格式）
+                                            content = re.sub(r'\[搜索结果\d*\]', '', content)
+                                            content = re.sub(r'```search.*?```', '', content, flags=re.DOTALL)
+                                            
                                             if content.strip():
+                                                # 收到实际内容，搜索状态结束
+                                                if search_status_sent:
+                                                    search_status_sent = False
+                                                    yield f"data: {json_module.dumps({'searching': False})}\n\n"
+                                                    
                                                 full_content += content
                                                 # 发送 SSE 格式的数据
                                                 yield f"data: {json_module.dumps({'content': content})}\n\n"

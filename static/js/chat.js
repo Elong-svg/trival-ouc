@@ -379,6 +379,7 @@ class ChatManager {
       const decoder = new TextDecoder();
       let fullContent = '';
       let buffer = '';
+      let searchIndicator = null;  // 搜索指示器元素
       
       // 创建 AI 消息元素（空内容）
       const aiMessageEl = this.addMessage('assistant', '');
@@ -399,10 +400,30 @@ class ChatManager {
               const data = JSON.parse(dataStr);
               
               if (data.done) {
+                // 流式响应完成，移除搜索指示器
+                this.removeSearchIndicator(searchIndicator);
+                searchIndicator = null;
                 // 流式响应完成
                 fullContent = data.full_content || fullContent;
                 console.log(`[DEBUG] 流式响应完成，总长度: ${fullContent.length} 字符`);
+              } else if (data.searching !== undefined) {
+                // ===== 搜索状态变化 =====
+                if (data.searching) {
+                  // 开始搜索 - 显示搜索指示器
+                  searchIndicator = this.showSearchIndicator(aiMessageEl, data.tool_name || 'web_search');
+                  console.log(`[DEBUG] 联网搜索中... 工具: ${data.tool_name || 'web_search'}`);
+                } else {
+                  // 搜索结束 - 移除搜索指示器
+                  this.removeSearchIndicator(searchIndicator);
+                  searchIndicator = null;
+                  console.log(`[DEBUG] 联网搜索完成`);
+                }
               } else if (data.content) {
+                // 收到内容，确保搜索指示器已移除
+                if (searchIndicator) {
+                  this.removeSearchIndicator(searchIndicator);
+                  searchIndicator = null;
+                }
                 // 接收新内容
                 fullContent += data.content;
                 // 实时更新显示
@@ -416,6 +437,9 @@ class ChatManager {
           }
         }
       }
+      
+      // 确保搜索指示器被移除
+      this.removeSearchIndicator(searchIndicator);
       
       // 最终渲染
       contentEl.innerHTML = renderMarkdown(fullContent);
@@ -704,6 +728,48 @@ class ChatManager {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // ===== 联网搜索指示器 =====
+  showSearchIndicator(aiMessageEl, toolName) {
+    // 移除已有的搜索指示器
+    const existing = aiMessageEl.querySelector('.search-indicator');
+    if (existing) existing.remove();
+    
+    // 创建搜索指示器
+    const indicator = document.createElement('div');
+    indicator.className = 'search-indicator';
+    indicator.innerHTML = `
+      <div class="search-indicator-inner">
+        <div class="search-spinner"></div>
+        <span class="search-text">正在联网搜索最新信息...</span>
+      </div>
+    `;
+    
+    // 插入到 AI 消息的内容区域之前
+    const contentEl = aiMessageEl.querySelector('.message-content');
+    if (contentEl) {
+      aiMessageEl.insertBefore(indicator, contentEl);
+    } else {
+      aiMessageEl.appendChild(indicator);
+    }
+    
+    // 滚动到底部
+    this.scrollToBottom();
+    
+    return indicator;
+  }
+  
+  removeSearchIndicator(indicator) {
+    if (indicator && indicator.parentNode) {
+      // 添加淡出动画
+      indicator.classList.add('fade-out');
+      setTimeout(() => {
+        if (indicator.parentNode) {
+          indicator.parentNode.removeChild(indicator);
+        }
+      }, 300);
+    }
   }
 
   scrollToBottom() {
