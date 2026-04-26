@@ -116,7 +116,7 @@
   border-radius: var(--radius-md);
   border: none;
   background: var(--gray-300);
-  color: white;
+  color: var(--gray-500);
   cursor: not-allowed;
   display: flex;
   align-items: center;
@@ -125,10 +125,20 @@
   flex-shrink: 0;
 }
 
+.send-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
 .send-btn.active {
   background: var(--gradient-blue);
+  color: white;
   cursor: pointer;
   box-shadow: var(--shadow-blue);
+}
+
+.send-btn.active svg {
+  color: white;
 }
 
 .send-btn.active:hover {
@@ -147,12 +157,25 @@
 }
 
 .send-btn.loading svg {
-  animation: spin 1s linear infinite;
+  animation: none;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.send-btn.stopping {
+  background: white;
+  color: #ef4444;
+  cursor: pointer;
+  border: none;
+  box-shadow: none;
+}
+
+.send-btn.stopping:hover {
+  background: var(--gray-50);
+}
+
+.send-btn.stopping svg {
+  width: 20px;
+  height: 20px;
+  animation: none;
 }
 
 @keyframes pulse {

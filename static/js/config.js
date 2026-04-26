@@ -1,9 +1,9 @@
-const CONFIG = {
+export const CONFIG = {
   API_URL: '/api/chat',
   HEALTH_CHECK_URL: '/api/health',
   
   MODEL_PARAMS: {
-    temperature: 0.7,
+    temperature: 0.6,
     max_tokens: 2000,
     top_p: 0.9,
   },
@@ -24,7 +24,12 @@ const CONFIG = {
 6. 优先推荐海大特色景点和研学资源
 7. 提供实用的参观建议和路线规划
 8. 保持友好、专业的服务态度
-9. 根据用户年龄段调整回答的深度和风格`,
+9. 根据用户年龄段调整回答的深度和风格
+
+## 重要提醒
+- **每段回答只生成一次，绝对不要重复相同内容**
+- **回答完成后立即停止，不要继续生成**
+- **不要对已说完的内容进行重复或改写**`,
   
   AGE_GROUP_CONFIG: {
     primary_1_3: {

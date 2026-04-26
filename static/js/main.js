@@ -73,6 +73,7 @@ class App {
     this.initSubjectSelector();
     this.initThinkingToggle();
     this.initImageUpload();
+    this.initHamburgerMenu();
   }
 
   initSubjectSelector() {
@@ -500,6 +501,52 @@ class App {
     this.renderAttachments();
   }
 
+  initHamburgerMenu() {
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    if (!hamburgerBtn || !sidebar || !overlay) return;
+
+    // 点击汉堡按钮打开侧边栏
+    hamburgerBtn.addEventListener('click', () => {
+      sidebar.classList.add('open');
+      overlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    });
+
+    // 点击遮罩层关闭侧边栏
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+      document.body.style.overflow = '';
+    });
+
+    // 监听历史对话项点击，自动关闭侧边栏
+    const historyList = document.getElementById('history-list');
+    if (historyList) {
+      historyList.addEventListener('click', () => {
+        if (window.innerWidth <= 639) {
+          sidebar.classList.remove('open');
+          overlay.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+
+    // 监听新对话按钮点击，自动关闭侧边栏
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+      newChatBtn.addEventListener('click', () => {
+        if (window.innerWidth <= 639) {
+          sidebar.classList.remove('open');
+          overlay.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+  }
+
   updateSubjectUI() {
     const confirmBtn = document.getElementById('subject-confirm');
     const countDisplay = document.querySelector('.subject-count-display');
@@ -740,13 +787,15 @@ class App {
     const hasContent = hasText || hasImages || hasFiles;
     
     if (chat.isWaiting) {
-      this.sendBtn.className = 'send-btn loading';
-      this.sendBtn.disabled = true;
+      this.sendBtn.className = 'send-btn stopping';
+      this.sendBtn.disabled = false;
       this.sendBtn.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="12 12"/>
+          <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2"/>
+          <rect x="7" y="7" width="6" height="6" rx="1" fill="currentColor"/>
         </svg>
       `;
+      this.sendBtn.onclick = () => chat.interruptGeneration();
     } else if (hasContent) {
       this.sendBtn.className = 'send-btn active';
       this.sendBtn.disabled = false;
@@ -755,6 +804,7 @@ class App {
           <path d="M3 10l14-7-7 14-2-5-5-2z" fill="currentColor"/>
         </svg>
       `;
+      this.sendBtn.onclick = null;
     } else {
       this.sendBtn.className = 'send-btn';
       this.sendBtn.disabled = true;
@@ -763,6 +813,7 @@ class App {
           <path d="M3 10l14-7-7 14-2-5-5-2z" fill="currentColor"/>
         </svg>
       `;
+      this.sendBtn.onclick = null;
     }
   }
 }

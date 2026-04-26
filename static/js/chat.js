@@ -52,6 +52,12 @@ class ChatManager {
         return;
       }
       
+      const regenerateBtn = e.target.closest('.regenerate-btn');
+      if (regenerateBtn) {
+        this.regenerateMessage(regenerateBtn);
+        return;
+      }
+      
       // 思考内容折叠/展开
       const thinkingLabel = e.target.closest('.thinking-content-label');
       if (thinkingLabel) {
@@ -253,6 +259,38 @@ class ChatManager {
     }
   }
 
+  async regenerateMessage(btn) {
+    const messageEl = btn.closest('.chat-message');
+    const messageIndex = Array.from(this.chatWindow.children).indexOf(messageEl);
+    
+    // 找到对应的用户消息
+    let userMessageIndex = -1;
+    for (let i = messageIndex - 1; i >= 0; i--) {
+      if (this.chatWindow.children[i].classList.contains('message-user')) {
+        userMessageIndex = i;
+        break;
+      }
+    }
+    
+    if (userMessageIndex === -1) {
+      this.showToast('找不到对应的用户消息');
+      return;
+    }
+    
+    // 获取用户消息内容
+    const userMessageEl = this.chatWindow.children[userMessageIndex];
+    const userContent = userMessageEl.querySelector('.message-content')?.textContent || '';
+    
+    // 删除当前的 AI 消息
+    messageEl.remove();
+    this.messages.splice(messageIndex, 1);
+    
+    // 重新发送消息（跳过冷却时间检查）
+    this.isWaiting = false;
+    this.lastMessageTime = 0; // 重置冷却时间
+    await this.sendMessage(userContent);
+  }
+
   dislikeMessage(btn) {
     const messageEl = btn.closest('.chat-message');
     const likeBtn = messageEl.querySelector('.like-btn');
@@ -296,6 +334,11 @@ class ChatManager {
     this.isWaiting = true;
     this.lastMessageTime = now;
     this.hideWelcomePage();
+    
+    // 立即更新发送按钮状态为停止按钮
+    if (window.app && window.app.updateSendButtonState) {
+      window.app.updateSendButtonState();
+    }
     
     // 添加用户消息（包含图片和文件）
     this.addMessage('user', messageText, uploadedImages, uploadedFiles);
@@ -419,7 +462,10 @@ class ChatManager {
       
       const requestStartTime = Date.now();
       
-      // 使用流式响应
+      // 创建 AbortController 用于打断
+      this.abortController = new AbortController();
+      
+      // 处理流式响应
       const response = await fetch(this.API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -427,7 +473,8 @@ class ChatManager {
           messages: messagesPayload,
           age_group: ageGroup,
           enable_thinking: window.app.thinkingEnabled !== false // 传递思考开关状态，默认开启
-        })
+        }),
+        signal: this.abortController.signal
       });
       
       const responseTime = Date.now() - requestStartTime;
@@ -560,8 +607,19 @@ class ChatManager {
       await sidebar.loadHistoryList();
       
     } catch (error) {
-      // 直接显示友好的错误消息，不加"请求失败"前缀
-      this.addMessage('error', error.message);
+      // 如果是用户主动中断，不显示错误
+      if (error.name === 'AbortError') {
+        console.log('[DEBUG] 用户中断生成');
+        
+        // 如果已有内容，保留；否则删除消息
+        if (!fullContent.trim()) {
+          aiMessageEl.remove();
+          this.messages.pop();
+        }
+      } else {
+        // 直接显示友好的错误消息，不加"请求失败"前缀
+        this.addMessage('error', error.message);
+      }
       
       // 确保更新发送按钮状态
       if (window.app && window.app.updateSendButtonState) {
@@ -569,6 +627,7 @@ class ChatManager {
       }
     } finally {
       this.isWaiting = false;
+      this.abortController = null;
       
       // 再次确保更新发送按钮状态
       if (window.app && window.app.updateSendButtonState) {
@@ -787,6 +846,12 @@ class ChatManager {
         ${attachmentsHtml}
         <div class="message-content">${content ? renderMarkdown(content) : ''}</div>
         <div class="message-actions">
+          <button class="action-btn regenerate-btn" title="重新生成">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="pointer-events: none;">
+              <path d="M2 8a6 6 0 0110.47-4M14 8a6 6 0 01-10.47 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M12 2v4h-4M4 14v-4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
           <button class="action-btn copy-btn" title="复制" data-content="${this.escapeHtml(content)}">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="pointer-events: none;">
               <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
@@ -992,6 +1057,13 @@ class ChatManager {
     };
     
     return ageMap[text] || 'high_school';
+  }
+
+  interruptGeneration() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.showToast('已停止生成');
+    }
   }
 
   getFileIconSVG(fileType) {

@@ -60,6 +60,36 @@ def create_app():
     # GLM-4.1V-Thinking-Flash 支持深度思考（thinking）功能
     app.config['API_MODEL'] = 'glm-4.1v-thinking-flash'
 
+    # ========== 知识库加载 ==========
+    
+    def load_knowledge_base():
+        """从 knowledge_base 目录动态加载知识库文件"""
+        kb_dir = os.path.join(base_dir, 'knowledge_base')
+        if not os.path.exists(kb_dir):
+            print(f"[WARN] 知识库目录不存在: {kb_dir}")
+            return ""
+        
+        knowledge_parts = []
+        # 按文件名排序加载，确保 core.md 最先加载
+        for filename in sorted(os.listdir(kb_dir)):
+            if filename.endswith('.md'):
+                filepath = os.path.join(kb_dir, filename)
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        knowledge_parts.append(content)
+                        print(f"[INFO] 加载知识库文件: {filename} ({len(content)} 字符)")
+                except Exception as e:
+                    print(f"[ERROR] 加载知识库文件失败 {filename}: {e}")
+        
+        full_knowledge = "\n\n---\n\n".join(knowledge_parts)
+        print(f"[INFO] 知识库加载完成，总长度: {len(full_knowledge)} 字符")
+        return full_knowledge
+    
+    # 启动时加载知识库到内存
+    KNOWLEDGE_BASE = load_knowledge_base()
+    app.config['KNOWLEDGE_BASE'] = KNOWLEDGE_BASE
+
     # ========== 工具函数 ==========
     
     def allowed_file(filename):
@@ -202,6 +232,17 @@ def create_app():
             messages = data.get("messages", [])
             age_group = data.get("age_group", "unknown")
             enable_thinking = data.get("enable_thinking", True)  # 从前端获取思考开关状态，默认开启
+            
+            # 获取知识库（从内存中读取，毫秒级响应）
+            knowledge_base = app.config.get('KNOWLEDGE_BASE', '')
+            
+            # 添加知识库上下文
+            if knowledge_base:
+                enhancedSystemPrompt = f"\n\n## 相关知识库参考\n{knowledge_base}\n\n请基于以上知识库内容，结合你的通用知识，给用户一个详细、生动、符合年龄段的回答。"
+                if messages and messages[0].get('role') == 'system':
+                    messages[0]['content'] += enhancedSystemPrompt
+                else:
+                    messages.insert(0, {"role": "system", "content": enhancedSystemPrompt.strip()})
             
             print(f"[DEBUG] {request_id} - 消息数量: {len(messages)}")
             print(f"[DEBUG] {request_id} - 年龄段: {age_group}")

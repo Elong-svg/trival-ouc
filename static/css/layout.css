@@ -33,3 +33,8 @@
   overflow: hidden;
   position: relative;
 }
+
+/* Mobile header - hidden by default */
+.mobile-header {
+  display: none;
+}
